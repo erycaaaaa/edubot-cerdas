@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-surface: #FFFFFF;
+  --color-card-soft: #FDF6EE;
+  --color-brand: #B9895F;
+  --color-brand-hover: #A67950;
+  --color-olive: #776938;
+  --color-text-main: #332F2D;
+  --color-text-secondary: #5D594C;
+  --color-muted: #BDB2A0;
+}
+
+.dark {
+  --color-surface: #242320;
+  --color-card-soft: #191917;
+  --color-text-main: #f4eee5;
+  --color-text-secondary: #cdc4b6;
+  --color-muted: #6b655d;
+}
+
+body {
+  background-color: var(--color-card-soft);
+  color: var(--color-text-main);
+}
+
+/* Legacy pages use literal Tailwind colors; map their neutral surfaces and
+   text to the shared dark palette while preserving colored actions. */
+.dark [class~="bg-white"],
+.dark [class~="bg-surface"],
+.dark [class~="bg-[#FFFFFF]"],
+.dark [class~="bg-[#ffffff]"],
+.dark [class~="bg-[#FFF9F2]"],
+.dark [class~="bg-[#fffcf3]"] {
+  background-color: #242320;
+}
+
+.dark [class~="bg-white/90"] {
+  background-color: rgb(36 35 32 / 0.94);
+}
+
+.dark [class~="bg-card-soft"],
+.dark [class~="bg-brand-light"],
+.dark [class~="bg-[#FDF6EE]"],
+.dark [class~="bg-[#FFF9F2]"],
+.dark [class~="bg-[#F3E8DB]"] {
+  background-color: #191917;
+}
+
+.dark [class~="bg-olive-light"],
+.dark [class~="bg-olive-light/30"] {
+  background-color: #343629;
+}
+
+.dark [class~="text-txt-main"],
+.dark [class~="text-[#332F2D]"] {
+  color: #f4eee5;
+}
+
+.dark [class~="text-txt-secondary"],
+.dark [class~="text-[#5D594C]"],
+.dark [class~="text-gray-600"],
+.dark [class~="text-gray-500"] {
+  color: #cdc4b6;
+}
+
+.dark [class~="text-olive"],
+.dark [class~="text-[#776938]"] {
+  color: #d0cc96;
+}
+
+.dark [class~="text-brand"],
+.dark [class~="text-[#B9895F]"] {
+  color: #e2b58c;
+}
+
+.dark [class~="border-txt-muted/30"],
+.dark [class~="border-txt-muted/20"],
+.dark [class~="border-[#BDB2A0]/20"],
+.dark [class~="border-[#BDB2A0]/25"],
+.dark [class~="border-[#BDB2A0]/30"] {
+  border-color: #514c43;
+}
+
+.dark [class~="hover:bg-[#FDF6EE]"]:hover,
+.dark [class~="hover:bg-[#F3E8DB]"]:hover,
+.dark [class~="hover:bg-olive-light"]:hover {
+  background-color: #38362e;
+}
+
+.dark [class~="hover:text-[#332F2D]"]:hover {
+  color: #ffffff;
+}
+
+.dark input, .dark textarea, .dark select {
+  background-color: #242320;
+  color: #f4eee5;
+  border-color: #6b655d;
+}
+
+.dark input::placeholder, .dark textarea::placeholder {
+  color: #b9b0a2;
+}
