@@ -1,0 +1,5 @@
+# Versions observed in .venv-local and used for local validation on 2026-09-27.
+# requirements.txt remains the broad declaration; this is a reproducible top-level snapshot.
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
