@@ -1,0 +1,5 @@
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS strike_count INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';

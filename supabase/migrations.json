@@ -1,0 +1,9 @@
+[
+  "migrations/001_strikes_notifications.sql",
+  "migrations/002_profile_strike_columns.sql",
+  "migrations/supabase/migrations/003_profile_gamification.sql",
+  "migrations/004_avatar_economy.sql",
+  "migrations/005_profile_access.sql",
+  "migrations/006_atomic_strikes.sql",
+  "migrations/007_admin_schools.sql"
+]
