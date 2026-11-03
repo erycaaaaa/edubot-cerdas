@@ -1,4 +1,6 @@
 import axios from 'axios';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // ============================================================
 // TYPES
@@ -100,6 +102,130 @@ console.log(
     ? 'configured'
     : 'NOT CONFIGURED',
 );
+
+const EDUCATIONAL_SYSTEM_PROMPT_CANDIDATES = [
+  path.resolve(
+    __dirname,
+    '..',
+    '..',
+    'prompts',
+    'system_prompt.md',
+  ),
+  path.resolve(
+    process.cwd(),
+    'prompts',
+    'system_prompt.md',
+  ),
+  path.resolve(
+    process.cwd(),
+    'backend-vite',
+    'prompts',
+    'system_prompt.md',
+  ),
+];
+
+let educationalSystemPromptCache: string | null = null;
+
+export function loadEducationalSystemPrompt(
+  overridePath?: string,
+): string {
+  const promptPath = overridePath
+    ? path.resolve(overridePath)
+    : EDUCATIONAL_SYSTEM_PROMPT_CANDIDATES.find(
+        (candidate) =>
+          fs.existsSync(candidate),
+      ) ?? EDUCATIONAL_SYSTEM_PROMPT_CANDIDATES[0];
+
+  if (
+    !overridePath &&
+    educationalSystemPromptCache
+  ) {
+    return educationalSystemPromptCache;
+  }
+
+  try {
+    if (!fs.existsSync(promptPath)) {
+      throw new Error(
+        `Educational system prompt file is missing at ${promptPath}. Checked: ${EDUCATIONAL_SYSTEM_PROMPT_CANDIDATES.join(', ')}`,
+      );
+    }
+
+    const content =
+      fs.readFileSync(promptPath, 'utf8').trim();
+
+    if (!content) {
+      throw new Error(
+        `Educational system prompt file is empty at ${promptPath}`,
+      );
+    }
+
+    educationalSystemPromptCache = content;
+
+    console.log(
+      '✅ Educational system prompt loaded successfully.',
+    );
+
+    return content;
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : String(error);
+
+    console.error(
+      '❌ Educational system prompt failed to load:',
+      message,
+    );
+
+    throw new Error(
+      `Educational system prompt is not available. ${message}`,
+    );
+  }
+}
+
+function buildEducationalPrompt(
+  message: string,
+): string {
+  const systemPrompt =
+    loadEducationalSystemPrompt();
+
+  return [
+    systemPrompt.trim(),
+    '',
+    'Pertanyaan siswa:',
+    message.trim(),
+    '',
+    'Jawab dengan bahasa Indonesia yang sederhana, jelas, dan sesuai untuk siswa SD kelas 1-6. Fokus pada pembelajaran dan jangan menyebut alat atau pengembangan internal.',
+  ].join('\n');
+}
+
+function escapedDeveloperResponsePatterns(): RegExp[] {
+  return [
+    /(?:i\s+am|aku\s+adalah|saya\s+adalah).*(?:copilot|github\s+copilot|vs\s+code|developer\s+assistant|ai\s+assistant)/i,
+    /(?:saya|aku|i)\s+(?:menggunakan|menggunak|using).*(?:copilot\s+sdk|github\s+copilot|vs\s+code)/i,
+    /(?:copilot\s+sdk).*(?:assistant|developer|backend|debug)/i,
+    /(?:MODERATION_API_URL|GENERATOR_API_URL|REQUEST_ID|NGROK)\s*[:=]/i,
+    /(?:health\s+check|api\s+health|backend\s+diagnostic|internal\s+environment|environment\s+variable)\s*(?:dan|:|=|,|\.)/i,
+    /(?:sql\s+injection|fetch\s+failed)\s*(?:dan|:|=|,|\.)/i,
+  ];
+}
+
+export function validateStudentFacingResponse(
+  response: string,
+): boolean {
+  const normalized = response.trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  return !escapedDeveloperResponsePatterns().some(
+    (pattern) => pattern.test(normalized),
+  );
+}
+
+const SAFE_EDUCATIONAL_FALLBACK =
+  'Halo! Aku EduBot, teman belajarmu. Aku siap membantu belajar dengan cara yang mudah, santai, dan menyenangkan. Silakan ajukan pertanyaanmu lagi tentang pelajaran hari ini.';
 
 // ============================================================
 // HELPERS
@@ -690,6 +816,44 @@ export async function checkGeneratorHealth():
  *   "do_sample": false
  * }
  */
+async function callGeneratorWithPrompt(
+  prompt: string,
+  requestId?: string,
+): Promise<string> {
+  const response =
+    await axios.post<GeneratorApiResponse>(
+      `${GENERATOR_API_URL}/generate`,
+      {
+        prompt,
+        max_new_tokens: 256,
+        do_sample: false,
+        request_id: requestId,
+      },
+      {
+        headers: getGeneratorHeaders(),
+        timeout: GENERATOR_TIMEOUT,
+      },
+    );
+
+  const generatedResponse =
+    response.data?.response;
+
+  if (
+    typeof generatedResponse !== 'string' ||
+    !generatedResponse.trim()
+  ) {
+    console.error(
+      '❌ Generator API returned an empty response.',
+    );
+
+    throw new Error(
+      'Generator API returned an empty response',
+    );
+  }
+
+  return generatedResponse.trim();
+}
+
 export async function generateLocalResponse(
   message: string,
   requestId?: string,
@@ -716,54 +880,54 @@ export async function generateLocalResponse(
     );
   }
 
-  // ==========================================================
-  // CALL GENERATOR
-  // ==========================================================
+  const educationalPrompt =
+    buildEducationalPrompt(message);
 
   try {
-    const response =
-      await axios.post<GeneratorApiResponse>(
-        `${GENERATOR_API_URL}/generate`,
-        {
-          prompt: message,
-
-          max_new_tokens: 256,
-
-          do_sample: false,
-
-          request_id: requestId,
-        },
-        {
-          headers:
-            getGeneratorHeaders(),
-
-          timeout:
-            GENERATOR_TIMEOUT,
-        },
+    const candidate =
+      await callGeneratorWithPrompt(
+        educationalPrompt,
+        requestId,
       );
 
-    const generatedResponse =
-      response.data?.response;
-
-    // ========================================================
-    // EMPTY RESPONSE
-    // ========================================================
-
-    if (
-      typeof generatedResponse !== 'string' ||
-      !generatedResponse.trim()
-    ) {
-      console.error(
-        '❌ Generator API returned an empty response.',
-      );
-
-      throw new Error(
-        'Generator API returned an empty response',
-      );
+    if (validateStudentFacingResponse(candidate)) {
+      return candidate;
     }
 
-    return generatedResponse.trim();
+    console.error(
+      '⚠️ Student-facing response failed identity validation. Retrying once with corrective educational prompt.',
+      {
+        requestId,
+        responseSnippet: candidate.slice(0, 220),
+      },
+    );
 
+    const retryCandidate =
+      await callGeneratorWithPrompt(
+        [
+          loadEducationalSystemPrompt(),
+          '',
+          'Instruksi perbaikan untuk respons siswa:',
+          'Jawab hanya sebagai EduBot, teman belajar siswa SD. Jangan menyebut Copilot, VS Code, backend, database, atau alat pengembangan.',
+          '',
+          'Pertanyaan siswa:',
+          message.trim(),
+        ].join('\n'),
+        requestId,
+      );
+
+    if (validateStudentFacingResponse(retryCandidate)) {
+      return retryCandidate;
+    }
+
+    console.error(
+      '⚠️ Regenerated response still failed educational identity validation. Returning safe fallback.',
+      {
+        requestId,
+      },
+    );
+
+    return SAFE_EDUCATIONAL_FALLBACK;
   } catch (error) {
 
     // ========================================================

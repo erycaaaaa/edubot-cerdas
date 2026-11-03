@@ -42,8 +42,15 @@ before(async () => {
       }
 
       if (request.url === '/generate') {
+        const shouldRejectIdentity = body.prompt?.includes('FORCE_BAD_IDENTITY');
+        const emptyGeneratorResponse = body.prompt?.includes('Pertanyaan siswa:\nempty') || body.prompt === 'empty';
+        const responseText = shouldRejectIdentity
+          ? 'Saya AI assistant menggunakan Copilot SDK di VS Code. Informasi backend: MODERATION_API_URL=... dan request_id debug sedang berjalan.'
+          : emptyGeneratorResponse
+            ? ''
+            : `Generated: ${body.prompt}`;
         response.end(JSON.stringify({
-          response: body.prompt === 'empty' ? '' : `Generated: ${body.prompt}`,
+          response: responseText,
         }));
         return;
       }
@@ -115,25 +122,46 @@ test('only a valid toxic result is a violation; malformed labels fail closed', a
   assert.equal(invalid.action, 'REJECT');
 });
 
-test('generator sends the Qwen payload and returns only response', async () => {
+test('generator sends the educational prompt and returns the generated response', async () => {
   const generated = await service.generateLocalResponse(
     'Apa manfaat pemanasan?',
     'request-3',
   );
 
-  assert.equal(generated, 'Generated: Apa manfaat pemanasan?');
-
-  const generatorRequest = requests.find(
+  const lastGeneratorRequest = requests.filter(
     (request) => request.path === '/generate',
-  );
-  assert.deepEqual(generatorRequest.body, {
-    prompt: 'Apa manfaat pemanasan?',
-    max_new_tokens: 256,
-    do_sample: false,
-    request_id: 'request-3',
-  });
+  ).at(-1);
+
+  assert.equal(generated, `Generated: ${lastGeneratorRequest.body.prompt}`);
+
+  const generatorRequest = lastGeneratorRequest;
+  assert.ok(generatorRequest.body.prompt.includes('You are EduBot'));
+  assert.ok(generatorRequest.body.prompt.includes('Apa manfaat pemanasan?'));
+  assert.equal(generatorRequest.body.max_new_tokens, 256);
+  assert.equal(generatorRequest.body.do_sample, false);
+  assert.equal(generatorRequest.body.request_id, 'request-3');
   assert.equal(generatorRequest.headers.authorization, 'Bearer test-generator-key');
   assert.equal(generatorRequest.headers['ngrok-skip-browser-warning'], 'true');
+});
+
+test('student-facing validation rejects Copilot/developer identity responses and falls back safely', async () => {
+  const generated = await service.generateLocalResponse(
+    'FORCE_BAD_IDENTITY pertanyaan aman',
+    'request-4',
+  );
+
+  assert.ok(generated.includes('Aku EduBot'));
+  assert.equal(
+    generated,
+    'Halo! Aku EduBot, teman belajarmu. Aku siap membantu belajar dengan cara yang mudah, santai, dan menyenangkan. Silakan ajukan pertanyaanmu lagi tentang pelajaran hari ini.',
+  );
+});
+
+test('missing educational prompt fails explicitly instead of falling back silently', () => {
+  assert.throws(
+    () => service.loadEducationalSystemPrompt('/definitely/missing/system_prompt.md'),
+    /Educational system prompt is not available/i,
+  );
 });
 
 test('generator health requires a ready Qwen service', async () => {

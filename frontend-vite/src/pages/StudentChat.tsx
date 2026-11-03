@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Home, Award, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { sendChatMessage, getMyStrikes, getMyGamification, type GamificationData } from '../services/apiClient';
+import { sendChatMessage, getMyStrikes, getMyGamification, getMyChatHistory, type GamificationData } from '../services/apiClient';
 import { AnimatedBlobs } from '../components/AnimatedBlobs';
 import { BingoLogo } from '../components/BingoLogo';
 import { HelpfulFeedback } from '../components/HelpfulFeedback';
@@ -30,6 +30,31 @@ interface ChatResultLike {
 
 const isSuccessfulChatReply = (data: ChatResultLike): boolean =>
   data.status === 'OK' && Boolean(data.gamification);
+
+const buildHistoryMessages = (student: StudentInfo, items: Array<{ role: 'user' | 'assistant'; content: string; created_at?: string; request_id?: string | null }> = []): Message[] => {
+  const normalized: Message[] = items
+    .filter((item) => typeof item.content === 'string' && item.content.trim())
+    .map((item, index): Message => ({
+      id: Date.now() + index,
+      text: item.content.trim(),
+      sender: item.role === 'user' ? 'user' : 'bot',
+      timestamp: item.created_at ? new Date(item.created_at) : new Date(),
+      requestId: item.request_id ?? undefined,
+    }));
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  return [{
+    id: 1,
+    text: student.gradeNumber <= 3
+      ? `Halo ${student.name}! 👋 Aku EduBot! Mau belajar apa hari ini?`
+      : `Halo ${student.name}! 👋 Aku EduBot, teman belajarmu! Apa yang ingin kamu pelajari hari ini?`,
+    sender: 'bot',
+    timestamp: new Date(),
+  }];
+};
 
 interface StudentInfo {
   id: string;
@@ -138,6 +163,36 @@ function BadwordPopAnimation({ show }: { show: boolean }) {
   );
 }
 
+function playXpGainSound() {
+  const AudioCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtor) return;
+
+  const audioCtx = new AudioCtor();
+  const notes = [440, 554.37, 659.25];
+
+  notes.forEach((frequency, index) => {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = 'triangle';
+    oscillator.frequency.value = frequency;
+    gainNode.gain.value = 0.0001;
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    const startAt = audioCtx.currentTime + index * 0.09;
+    oscillator.start(startAt);
+    gainNode.gain.exponentialRampToValueAtTime(0.12, startAt + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.2);
+    oscillator.stop(startAt + 0.22);
+  });
+
+  window.setTimeout(() => {
+    void audioCtx.close().catch(() => undefined);
+  }, 500);
+}
+
 export default function StudentChat() {
   const navigate = useNavigate();
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -163,21 +218,46 @@ export default function StudentChat() {
   const [showBadwordPop, setShowBadwordPop] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [gamification, setGamification] = useState<GamificationData | null>(null);
+  const [xpBurst, setXpBurst] = useState<{ delta: number; id: number } | null>(null);
+  const [levelUp, setLevelUp] = useState<{ level: number; id: number } | null>(null);
 
-  // Load strikes from backend database on mount
+  const triggerXpBurst = (delta: number) => {
+    if (!Number.isFinite(delta) || delta <= 0) return;
+    setXpBurst({ delta, id: Date.now() + Math.random() });
+    playXpGainSound();
+    window.setTimeout(() => setXpBurst((current) => (current && current.delta === delta ? null : current)), 1400);
+  };
+
+  const applyGamificationState = (next: GamificationData | null, previous: GamificationData | null) => {
+    if (next && previous) {
+      const previousXp = Number(previous.xp ?? 0);
+      const nextXp = Number(next.xp ?? 0);
+      if (nextXp > previousXp) {
+        triggerXpBurst(nextXp - previousXp);
+      }
+      if (next.level.level > previous.level.level) {
+        setLevelUp({ level: next.level.level, id: Date.now() + Math.random() });
+        window.setTimeout(() => setLevelUp((current) => (current && current.level === next.level.level ? null : current)), 2000);
+      }
+    }
+    return next;
+  };
+
+  // Load strikes, gamification, and persisted chat history from backend on mount
   useEffect(() => {
     let isMounted = true;
-    Promise.all([getMyStrikes(), getMyGamification()])
-      .then(([status, progress]) => {
+    Promise.all([getMyStrikes(), getMyGamification(), getMyChatHistory()])
+      .then(([status, progress, history]) => {
         if (!isMounted) return;
         setStrikeCount(status.strikeCount);
         setGamification(progress);
+        setMessages(buildHistoryMessages(student, history));
         if (status.isBlocked || status.strikeCount >= 3) {
           setIsChatBlocked(true);
         }
       })
       .catch((err) => {
-        console.warn('Could not fetch student progress from backend:', err);
+        console.warn('Could not fetch student progress or chat history from backend:', err);
         // Try gamification independently so a strike API hiccup does not hide progress.
         getMyGamification().then((progress) => {
           if (isMounted) setGamification(progress);
@@ -227,7 +307,12 @@ export default function StudentChat() {
       if (typeof data.strikeCount === 'number') {
         setStrikeCount(data.strikeCount);
       }
-      if (data.gamification) setGamification(previous => ({ ...data.gamification, avatar: previous?.avatar ?? student.avatar }));
+      if (data.gamification) {
+        setGamification((previous) => applyGamificationState({
+          ...data.gamification,
+          avatar: previous?.avatar ?? student.avatar,
+        } as GamificationData, previous));
+      }
 
       if (data.hasViolation) {
         setShowBadwordPop(true);
@@ -315,6 +400,102 @@ export default function StudentChat() {
     <div className="h-screen flex bg-[#FDF6EE] relative overflow-hidden text-[#332F2D]">
       <AnimatedBlobs />
 
+      <AnimatePresence>
+        {xpBurst && (
+          <motion.div
+            key={xpBurst.id}
+            initial={{ opacity: 0, y: 18, scale: 0.7 }}
+            animate={{ opacity: 1, y: -16, scale: 1 }}
+            exit={{ opacity: 0, y: -32, scale: 0.8 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="pointer-events-none fixed right-8 top-24 z-50"
+          >
+            <motion.div
+              animate={{ boxShadow: ['0 0 0 rgba(185,137,95,0.3)', '0 0 24px rgba(255,214,102,0.8)', '0 0 0 rgba(185,137,95,0.3)'] }}
+              transition={{ duration: 0.9, repeat: 3 }}
+              className="relative overflow-hidden rounded-full bg-gradient-to-r from-[#F5D77F] via-[#B9895F] to-[#F7C670] px-4 py-2 text-sm font-black text-white shadow-[0_12px_30px_rgba(185,137,95,0.45)]"
+            >
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.8, 1], scale: [1, 1.2, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 0.2 }}
+                className="mr-1 inline-block text-base"
+              >
+                ✨
+              </motion.span>
+              +{xpBurst.delta} EXP
+            </motion.div>
+
+            {[...Array(12)].map((_, index) => (
+              <motion.span
+                key={`${xpBurst.id}-${index}`}
+                initial={{ opacity: 0, x: 0, y: 0, scale: 0.6 }}
+                animate={{
+                  opacity: [0, 1, 0],
+                  x: [0, ((index % 3) - 1) * 30, ((index % 5) - 2) * 38],
+                  y: [0, -18 - (index % 5) * 10, -48 - (index % 4) * 12],
+                  rotate: [0, 24, -24, 0],
+                  scale: [0.7, 1, 0.6],
+                }}
+                transition={{ duration: 0.9, delay: index * 0.04 }}
+                className="absolute left-1/2 top-1/2 text-[10px]"
+              >
+                {['✨', '⭐', '🎉', '💫'][index % 4]}
+              </motion.span>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {levelUp && (
+          <motion.div
+            key={levelUp.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#332F2D]/40 backdrop-blur-[1px]"
+          >
+            <motion.div
+              initial={{ scale: 0.7, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+              className="relative overflow-hidden rounded-[30px] border border-[#F8E5A4]/60 bg-gradient-to-br from-[#FFF9EE] via-[#FFF3D9] to-[#F3D58A] px-8 py-7 text-center shadow-[0_20px_60px_rgba(185,137,95,0.35)]"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#F3D58A] via-[#B9895F] to-[#F7C670]" />
+              {[...Array(14)].map((_, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                  animate={{
+                    opacity: [0, 1, 0],
+                    x: [0, ((index % 3) - 1) * 40, ((index % 5) - 2) * 50],
+                    y: [0, -20 - (index % 4) * 18, -50 - (index % 3) * 24],
+                    scale: [0.6, 1, 0.4],
+                  }}
+                  transition={{ duration: 1.1, delay: index * 0.04 }}
+                  className="absolute left-1/2 top-1/2 text-lg"
+                >
+                  {['✨', '⭐', '🎉', '💫'][index % 4]}
+                </motion.span>
+              ))}
+
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -6, 0], scale: [1, 1.14, 1] }}
+                transition={{ duration: 1.1, repeat: Infinity }}
+                className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/70 text-3xl shadow-lg"
+              >
+                ⭐
+              </motion.div>
+
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#776938]">Level Up!</p>
+              <h3 className="mt-2 text-3xl font-black text-[#332F2D]">Lv. {levelUp.level}</h3>
+              <p className="mt-2 text-sm text-[#5D594C]">Kamu luar biasa! EduBot makin semangat belajar bareng kamu.</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative z-10">
         {/* Header */}
@@ -354,10 +535,26 @@ export default function StudentChat() {
               aria-label="Buka koleksi avatar dan cara mendapat XP">
               <Award className="inline h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">Avatar & XP</span>
             </button>
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FFF9F2] border border-[#BDB2A0]/30">
-              <span className="text-xs font-bold text-[#B9895F]">⭐ {gamification?.expBalance ?? 0} EXP · {gamification?.xp ?? 0} XP</span>
-              <span className="text-[11px] text-[#5D594C]">Lv. {gamification?.level.level ?? 1}</span>
-            </div>
+            <motion.div
+              animate={xpBurst ? { boxShadow: ['0 0 0 rgba(185,137,95,0.2)', '0 0 18px rgba(255,214,102,0.7)', '0 0 0 rgba(185,137,95,0.2)'], scale: [1, 1.03, 1] } : { boxShadow: '0 0 0 rgba(185,137,95,0.0)', scale: 1 }}
+              transition={{ duration: 0.9, repeat: xpBurst ? 2 : 0 }}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FFF9F2] border border-[#BDB2A0]/30"
+            >
+              <motion.span
+                animate={xpBurst ? { opacity: [0.7, 1, 0.8, 1], scale: [1, 1.25, 1] } : { opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, repeat: xpBurst ? Infinity : 0 }}
+                className="text-xs font-bold text-[#B9895F]"
+              >
+                ⭐ {gamification?.expBalance ?? 0} EXP · {gamification?.xp ?? 0} XP
+              </motion.span>
+              <motion.span
+                animate={xpBurst ? { scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] } : { scale: 1, opacity: 1 }}
+                transition={{ duration: 0.8, repeat: xpBurst ? Infinity : 0 }}
+                className="text-[11px] text-[#5D594C]"
+              >
+                Lv. {gamification?.level.level ?? 1}
+              </motion.span>
+            </motion.div>
             <BadwordPopAnimation show={showBadwordPop} />
 
             <span
@@ -447,16 +644,23 @@ export default function StudentChat() {
                     requestId={message.requestId}
                     disabled={isLoading || isChatBlocked}
                     onReward={reward => setGamification(previous => {
-                      if (previous && previous.xp > reward.new_xp) return previous;
-                      return {
+                      const nextXp = Number(reward.new_xp ?? 0);
+                      const previousXp = Number(previous?.xp ?? 0);
+                      if (previous && previousXp >= nextXp) {
+                        return previous;
+                      }
+
+                      const next = {
                         streakDays: 0, lastActiveDate: null, conversationCount: 0,
                         helpfulFeedbackCount: 0, challengeCount: 0, badges: [],
                         avatar: student.avatar,
                         ...previous,
-                        xp: reward.new_xp,
+                        xp: nextXp,
                         expBalance: reward.exp_balance,
                         level: reward.level,
-                      };
+                      } as GamificationData;
+
+                      return applyGamificationState(next, previous);
                     })}
                   />}
                   <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-white/75' : 'text-[#5D594C]/70'}`}>

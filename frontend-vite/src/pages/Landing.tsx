@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AccountMenu } from '../components/AccountMenu';
 import { useTheme } from '../hooks/useTheme';
 import { useHomeAccount } from '../hooks/useHomeAccount';
@@ -12,6 +13,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const { account, checking, destination } = useHomeAccount();
   const { darkMode, toggleDarkMode } = useTheme();
+  const [showHelp, setShowHelp] = useState(false);
 
   const features = [
     {
@@ -62,7 +64,7 @@ export default function Landing() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDF6EE] text-[#332F2D] relative overflow-hidden transition-colors duration-300">
+    <div className="min-h-screen bg-[#FDF6EE] text-[#332F2D] relative overflow-x-hidden transition-colors duration-300">
 
       <AnimatedBlobs />
 
@@ -481,6 +483,70 @@ export default function Landing() {
           <p className="text-sm text-[#5D594C]">© 2026 EduBot. Semua hak dilindungi.</p>
         </div>
       </footer>
+
+      <style>{`
+        @keyframes helpPopIn {
+          0% {
+            opacity: 0;
+            transform: translateY(12px) scale(0.96);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes helpPopOut {
+          0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(12px) scale(0.96);
+          }
+        }
+      `}</style>
+
+      <div className="fixed bottom-6 right-6 z-50">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowHelp((prev) => !prev)}
+            aria-label="Bantuan"
+            className="group flex h-14 w-14 items-center justify-center rounded-full border border-[#B9895F]/20 bg-[#B9895F] text-white shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className={`h-7 w-7 transition-transform duration-300 ${showHelp ? 'rotate-12 scale-110' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="9" className="animate-pulse" />
+              <path d="M9.09 9a3 3 0 1 1 5.82 1c-1.1 1.3-2.24 1.94-2.24 3.5" />
+              <circle cx="12" cy="17" r="0.75" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+
+          <div
+            key={showHelp ? 'help-open' : 'help-closed'}
+            style={{
+              animation: showHelp ? 'helpPopIn 0.25s ease-out forwards' : 'helpPopOut 0.2s ease-in forwards',
+              opacity: showHelp ? 1 : 0,
+              visibility: showHelp ? 'visible' : 'hidden',
+              pointerEvents: showHelp ? 'auto' : 'none',
+              transform: showHelp ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.96)',
+            }}
+            className="absolute bottom-16 right-0 w-56 rounded-2xl bg-[#332F2D] px-4 py-3 text-sm text-white shadow-xl"
+          >
+            <p className="font-semibold text-[#F9D7B5]">Butuh bantuan?</p>
+            <p className="mt-1 text-[#F4EDE6]">Klik tombol login untuk mulai belajar atau masuk ke akunmu.</p>
+          </div>
+        </div>
+      </div>
 
     </div>
   );

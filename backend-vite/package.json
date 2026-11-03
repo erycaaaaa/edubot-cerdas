@@ -5,7 +5,8 @@
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
     "test": "node -r ts-node/register --test",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "diagnostics": "ts-node scripts/edubuz-diagnostics.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

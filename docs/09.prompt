@@ -1,0 +1,94 @@
+Anda adalah Senior Full-Stack Engineer dan Technical Writer yang ahli membuat dokumentasi developer level profesional untuk aplikasi berbasis web dan AI.
+
+Tugas Anda:
+Buatkan Manual Book Developer yang lengkap, sistematis, dan mudah diikuti untuk project EduBuz (chatbot pendidikan berbasis web) dari tahap awal hingga aplikasi dapat berjalan dan dikembangkan secara mandiri.
+
+Tujuan utama:
+- Membantu developer baru memahami project dari nol
+- Menjelaskan setup environment dan dependencies
+- Menjelaskan arsitektur sistem dan alur kerja aplikasi
+- Menjelaskan langkah-langkah install, run, test, dan troubleshoot
+- Menjadi panduan operasional untuk tim developer dan AI coding agent
+
+Konteks project:
+Project ini terdiri dari beberapa komponen utama:
+- Frontend: React + Vite + TypeScript + Tailwind
+- Backend: Node.js + Express + TypeScript
+- Reward API: Python + FastAPI
+- Database: Supabase PostgreSQL
+- Layanan eksternal: moderation API dan generator API
+- Fitur utama: chatbot edukasi, moderasi chat, strike siswa, XP/EXP reward, avatar, admin sekolah, guru, parent dashboard
+
+Folder utama project:
+- frontend-vite/
+- backend-vite/
+- reward-gamification-api/
+- supabase/migrations/
+- docs/
+- README.md
+
+Instruksi umum:
+1. Tulis dokumentasi dalam bahasa Indonesia yang formal tapi mudah dipahami.
+2. Gunakan struktur yang jelas dan profesional.
+3. Jangan hanya menulis teori; sertakan langkah-langkah nyata, command, env, file-path, dan flow kerja yang bisa langsung dijalankan developer.
+4. Jika ada informasi yang belum diverifikasi, tulis catatan "Needs Verification" atau "belum diverifikasi" agar dokumentasi tetap akurat.
+5. Prioritaskan dokumentasi source-based dan repo yang ada sebagai rujukan utama.
+6. Hindari klaim yang tidak didukung oleh kode.
+7. Dokumen harus bisa dipakai oleh developer yang masuk ke project baru.
+
+Format output yang harus dihasilkan:
+- Judul: Manual Book Developer — EduBuz Chatbot
+- Subjudul: Dari tahap awal hingga aplikasi berjalan dan dikembangkan
+- Gunakan numbering step-by-step dari 1 sampai 20+
+- Sertakan bagian:
+  1. Overview project
+  2. Tujuan manual book
+  3. Struktur repo
+  4. Persyaratan sistem
+  5. Clone dan setup awal
+  6. Setup database Supabase
+  7. Setup frontend
+  8. Setup backend
+  9. Setup reward API
+  10. Menjalankan semua service
+  11. Alur kerja aplikasi
+  12. Endpoint/API penting
+  13. Role dan akses user
+  14. Reward, level, EXP, badge, avatar
+  15. Admin dan guru flow
+  16. Testing dan validasi
+  17. Troubleshooting umum
+  18. Workflow pengembangan tim
+  19. Checklist sebelum demo/production
+  20. Kesimpulan dan referensi
+
+Detail yang wajib dimasukkan:
+- Langkah install Node.js, npm, Python, Git
+- Langkah setup `frontend-vite/.env`
+- Langkah setup `backend-vite/.env`
+- Langkah setup Python env untuk reward service
+- Urutan migrasi Supabase yang benar
+- Catatan penting: file migrasi 003 bersarang dan harus dipahami
+- Catatan penting tentang service-role key tidak boleh dipakai di frontend
+- Catatan penting bahwa layanan AI moderation dan generator adalah dependency eksternal
+- Detail tentang port default: frontend 5175, backend 5000, reward 8002
+- Flow dari login hingga chat hingga reward
+- Penjelasan role student, teacher, admin, parent
+- Penjelasan flow reward API, XP, EXP, level, badge, avatar
+- Penjelasan admin setup awal untuk sekolah dan undangan guru
+- Script command PowerShell yang dapat langsung dijalankan
+- Troubleshooting umum seperti auth error, DB error, chat tidak merespon, API tidak bisa diakses
+
+Aturan tambahan:
+- Tulis dengan gaya dokumentasi engineering yang profesional.
+- Gunakan Markdown yang rapi dan mudah dibaca.
+- Sertakan code block untuk command dan .env example.
+- Jangan terlalu singkat; dokumentasi harus sangat lengkap dan bisa dipakai sebagai panduan operasional.
+- Fokus pada real implementation yang sesuai dengan repository yang ada.
+- Jika ada perbedaan antara kode dan dokumen lama, prioritaskan kode terbaru.
+
+Output yang harus dihasilkan:
+Satu dokumen lengkap dalam format Markdown, siap disimpan sebagai file dokumentasi developer untuk project EduBuz.
+
+Catatan akhir:
+Dokumen ini harus membantu developer baru memahami project ini dari awal sampai tahap aplikasi bisa berjalan secara lokal dengan benar, serta menjadi panduan yang siap dipakai untuk pengembangan lanjutan.

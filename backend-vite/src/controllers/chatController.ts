@@ -1,6 +1,63 @@
 import { Request, Response } from 'express';
 
 import { processChat } from '../services/chatService';
+import { supabaseAdmin } from '../services/supabaseService';
+
+async function persistChatHistory(
+  studentId: string,
+  schoolId: string,
+  requestId: string,
+  inputMessage: string,
+  responseText: string | undefined,
+  hasViolation: boolean,
+): Promise<void> {
+  const historyRows: Array<{
+    student_id: string;
+    school_id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    request_id: string;
+    session_id: string;
+    is_violation: boolean;
+  }> = [];
+
+  const trimmedInput = inputMessage.trim();
+  if (trimmedInput) {
+    historyRows.push({
+      student_id: studentId,
+      school_id: schoolId,
+      role: 'user',
+      content: trimmedInput,
+      request_id: requestId,
+      session_id: requestId,
+      is_violation: Boolean(hasViolation),
+    });
+  }
+
+  if (responseText && responseText.trim()) {
+    historyRows.push({
+      student_id: studentId,
+      school_id: schoolId,
+      role: 'assistant',
+      content: responseText.trim(),
+      request_id: requestId,
+      session_id: requestId,
+      is_violation: false,
+    });
+  }
+
+  if (historyRows.length === 0) {
+    return;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('chat_history')
+    .insert(historyRows);
+
+  if (error) {
+    console.error('Failed to persist chat history:', error.message);
+  }
+}
 
 export async function handleChatMessage(
   req: Request,
@@ -47,6 +104,15 @@ export async function handleChatMessage(
       user,
       message.trim(),
       validRequestId,
+    );
+
+    await persistChatHistory(
+      user.id,
+      user.schoolId,
+      validRequestId,
+      message,
+      result.response,
+      result.hasViolation,
     );
 
     res.json({

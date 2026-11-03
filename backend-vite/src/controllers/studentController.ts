@@ -203,3 +203,46 @@ export async function submitGamificationFeedback(
     });
   }
 }
+
+export async function getMyChatHistory(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      res.status(401).json({
+        error: 'User not authenticated',
+      });
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('chat_history')
+      .select('id, role, content, request_id, session_id, is_violation, created_at')
+      .eq('student_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(200);
+
+    if (error) {
+      console.error('Failed to fetch chat history:', error.message);
+      res.status(500).json({
+        error: 'Failed to fetch chat history',
+        details: error.message,
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: data ?? [],
+    });
+  } catch (error: any) {
+    console.error('Chat history controller error:', error);
+    res.status(500).json({
+      error: 'Failed to fetch chat history',
+      details: error?.message || 'Internal server error',
+    });
+  }
+}

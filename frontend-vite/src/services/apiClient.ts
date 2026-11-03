@@ -218,6 +218,16 @@ export interface StudentStrikeStatus {
   }>;
 }
 
+export interface ChatHistoryItem {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  request_id?: string | null;
+  session_id?: string | null;
+  is_violation?: boolean;
+  created_at?: string;
+}
+
 export async function getMyStrikes(): Promise<StudentStrikeStatus> {
   const response = await apiClient.get('/api/me/strikes');
   return response.data.data;
@@ -230,14 +240,63 @@ export async function getMyGamification(): Promise<GamificationData> {
   return normalizeGamification(response.data.data);
 }
 
+export async function getMyChatHistory(): Promise<ChatHistoryItem[]> {
+  const response = await apiClient.get<{ data: ChatHistoryItem[] }>(
+    '/api/me/chat-history',
+  );
+  return response.data.data ?? [];
+}
+
+interface HelpfulFeedbackRewardPayload {
+  reward_delta?: number;
+  rewardDelta?: number;
+  new_xp?: number;
+  newXp?: number;
+  exp_balance?: number;
+  expBalance?: number;
+  level?: GamificationData['level'];
+  levelInfo?: GamificationData['level'];
+}
+
+function normalizeHelpfulFeedbackReward(
+  payload: HelpfulFeedbackRewardPayload | Record<string, unknown> | null | undefined,
+) {
+  const normalized = (payload ?? {}) as HelpfulFeedbackRewardPayload & Record<string, unknown>;
+  const rewardDelta = Number(
+    normalized.reward_delta ?? normalized.rewardDelta ?? 0,
+  );
+  const newXp = Number(
+    normalized.new_xp ?? normalized.newXp ?? 0,
+  );
+  const expBalance = Number(
+    normalized.exp_balance ?? normalized.expBalance ?? 0,
+  );
+  const level = (normalized.level ?? normalized.levelInfo ?? {
+    level: 1,
+    name: 'Learning Explorer',
+    current_xp: 0,
+    next_level_xp: null,
+    progress_to_next_level: 0,
+  }) as GamificationData['level'];
+
+  return {
+    reward_delta: rewardDelta,
+    new_xp: newXp,
+    exp_balance: expBalance,
+    level,
+  };
+}
+
 export async function submitHelpfulFeedback(requestId: string) {
-  const response = await apiClient.post<{ data: {
-    reward_delta: number;
-    new_xp: number;
-    exp_balance: number;
-    level: GamificationData['level'];
-  } }>('/api/me/gamification/feedback', { feedback: 'helpful', requestId });
-  return response.data.data;
+  const response = await apiClient.post<{ data: HelpfulFeedbackRewardPayload }>('/api/me/gamification/feedback', { feedback: 'helpful', requestId });
+
+  const payload = response.data?.data ?? response.data ?? null;
+  const normalizedReward = normalizeHelpfulFeedbackReward(payload);
+
+  console.log('📦 Helpful feedback API payload:', payload);
+  console.log('📦 Normalized helpful reward:', normalizedReward);
+
+  return normalizedReward;
 }
 
 export interface AvatarCollection {

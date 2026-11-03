@@ -5,6 +5,7 @@ import {
     getMyStrikes,
     getMyGamification,
     submitGamificationFeedback,
+    getMyChatHistory,
 } from '../controllers/studentController';
 
 const router = Router();
@@ -23,5 +24,8 @@ router.get('/gamification', getMyGamification);
 
 // POST /api/me/gamification/feedback
 router.post('/gamification/feedback', submitGamificationFeedback);
+
+// GET /api/me/chat-history
+router.get('/chat-history', getMyChatHistory);
 
 export default router;
