@@ -3,24 +3,11 @@
   "services": {
     "backend-vite": {
       "root": "backend-vite",
-      "framework": "express",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "reward-gamification-api",
-          "format": "url",
-          "env": "GAMIFICATION_API_URL"
-        }
-      ]
+      "framework": "express"
     },
     "frontend-vite": {
       "root": "frontend-vite",
       "framework": "vite"
-    },
-    "reward-gamification-api": {
-      "root": "reward-gamification-api",
-      "framework": "fastapi",
-      "entrypoint": "reward_api:app"
     }
   },
   "rewrites": [

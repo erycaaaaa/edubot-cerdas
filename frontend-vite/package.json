@@ -10,10 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/auth-helpers-sveltekit": "^0.15.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.96.0",
-    "@sveltejs/kit": "^2.52.0",
     "@vercel/speed-insights": "^2.1.0",
     "axios": "^1.13.5",
     "framer-motion": "^12.43.0",
@@ -25,7 +23,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@sveltejs/adapter-auto": "^7.0.1",
     "@types/node": "^24.10.13",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -38,9 +35,6 @@
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "prettier": "3.8.3",
-    "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-replace": "^2.2.0",
-    "rollup-plugin-terser": "^4.0.3",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",

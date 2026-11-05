@@ -387,16 +387,92 @@ const getApiBaseUrl = () => {
   return 'http://localhost:5000';
 };
 
+interface ParsedResponseBody {
+  data: any;
+  rawText: string;
+  isJson: boolean;
+}
+
+async function parseResponseBody(response: Response): Promise<ParsedResponseBody> {
+  let rawText = '';
+  try {
+    rawText = await response.text();
+  } catch {
+    return { data: null, rawText: '', isJson: false };
+  }
+
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    return { data: null, rawText: '', isJson: false };
+  }
+
+  try {
+    const data = JSON.parse(trimmed);
+    return { data, rawText: trimmed, isJson: true };
+  } catch {
+    return { data: null, rawText: trimmed, isJson: false };
+  }
+}
+
+function resolveErrorMessage(
+  response: Response,
+  parsed: ParsedResponseBody,
+  fallbackMessage: string
+): string {
+  if (parsed.isJson && parsed.data) {
+    return (
+      parsed.data.message ||
+      parsed.data.error ||
+      (response.status >= 500
+        ? `Server mengalami kendala internal (HTTP ${response.status}). Silakan coba beberapa saat lagi.`
+        : fallbackMessage)
+    );
+  }
+
+  const text = parsed.rawText;
+  if (!text) {
+    return `Tidak ada respon dari server (HTTP ${response.status}).`;
+  }
+
+  // Handle HTML or Vercel serverless error pages safely
+  if (
+    text.startsWith('<') ||
+    text.includes('<!DOCTYPE') ||
+    text.includes('<html') ||
+    text.includes('A server error') ||
+    text.includes('Internal Server Error')
+  ) {
+    return `Server mengalami kendala internal (HTTP ${response.status}). Silakan coba beberapa saat lagi.`;
+  }
+
+  return `${text.slice(0, 150)} (HTTP ${response.status})`;
+}
+
 export async function registerUser(userData: UserData & { password: string }): Promise<AuthResult> {
   try {
     const response = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: userData.email, name: userData.name, password: userData.password,
-        role: userData.role, grade: userData.gradeNumber, avatar: userData.avatar }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: userData.email,
+        name: userData.name,
+        password: userData.password,
+        role: userData.role,
+        grade: userData.gradeNumber,
+        avatar: userData.avatar,
+      }),
     });
-    const data = await response.json();
-    return response.ok ? { success: true } : { success: false, error: data.message || 'Registrasi gagal.' };
-  } catch { return { success: false, error: 'Registrasi belum dapat diproses.' }; }
+    const parsed = await parseResponseBody(response);
+    if (!response.ok) {
+      return {
+        success: false,
+        error: resolveErrorMessage(response, parsed, 'Registrasi gagal.'),
+      };
+    }
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Registrasi belum dapat diproses.' };
+  }
 }
 
 // LOGIN VIA BACKEND
@@ -455,25 +531,28 @@ export async function authenticateUser(
         }
       );
 
-    const data =
-      await response.json();
+    const parsed =
+      await parseResponseBody(response);
 
     // BACKEND ERROR
 
     if (!response.ok) {
       console.error(
-        '❌ Backend login failed:',
-        data
+        `❌ Backend login failed (HTTP ${response.status}):`,
+        parsed.isJson ? parsed.data : parsed.rawText
       );
 
       return {
         success: false,
-        error:
-          data.message ||
-          data.error ||
-          'Email atau password salah.',
+        error: resolveErrorMessage(
+          response,
+          parsed,
+          'Email atau password salah.'
+        ),
       };
     }
+
+    const data = parsed.data;
 
     // VALIDATE USER + SESSION
 
