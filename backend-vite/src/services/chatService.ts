@@ -21,10 +21,6 @@ import {
   randomUUID,
 } from 'node:crypto';
 
-// ============================================================
-// TYPES
-// ============================================================
-
 export interface ChatUser {
   id: string;
 }
@@ -105,10 +101,6 @@ export interface ChatResponse {
   error?: string;
 }
 
-// ============================================================
-// PROFILE
-// ============================================================
-
 interface StudentProfile {
   id: string;
 
@@ -124,10 +116,6 @@ interface StudentProfile {
    */
   avatar?: string | null;
 }
-
-// ============================================================
-// GET STUDENT PROFILE
-// ============================================================
 
 async function getStudentProfile(
   studentId: string,
@@ -161,10 +149,6 @@ async function getStudentProfile(
 
   return data as StudentProfile;
 }
-
-// ============================================================
-// NORMALIZE MODERATION RESULT
-// ============================================================
 
 function normalizeModerationResult(
   moderation: ModerationResult,
@@ -212,10 +196,6 @@ function normalizeModerationResult(
   };
 }
 
-// ============================================================
-// PROCESS GAMIFICATION
-// ============================================================
-
 async function processGamification(
   studentId: string,
   moderationLabel: ModerationLabel,
@@ -260,10 +240,6 @@ async function processGamification(
       reward.safety_gate,
   };
 }
-
-// ============================================================
-// HANDLE TOXIC MESSAGE
-// ============================================================
 
 async function handleToxicMessage(
   user: ChatUser,
@@ -331,10 +307,6 @@ async function handleToxicMessage(
   };
 }
 
-// ============================================================
-// MAIN CHAT FUNCTION
-// ============================================================
-
 export async function processChatMessage(
   user: ChatUser,
   message: string,
@@ -350,9 +322,7 @@ export async function processChatMessage(
     requestId?.trim() ||
     randomUUID();
 
-  // ==========================================================
   // VALIDATION
-  // ==========================================================
 
   const cleanMessage =
     String(
@@ -402,9 +372,7 @@ export async function processChatMessage(
     };
   }
 
-  // ==========================================================
   // 1. INPUT MODERATION
-  // ==========================================================
 
   let moderationResult:
     ModerationResult;
@@ -470,9 +438,7 @@ export async function processChatMessage(
       moderationResult,
     );
 
-  // ==========================================================
   // MODERATION SERVICE DOWN
-  // ==========================================================
 
   /**
    * IMPORTANT:
@@ -514,9 +480,7 @@ export async function processChatMessage(
     };
   }
 
-  // ==========================================================
   // 2. INPUT TOXIC
-  // ==========================================================
 
   /**
    * STRIKE HANYA jika:
@@ -580,9 +544,7 @@ export async function processChatMessage(
       };
     }
 
-    // ========================================================
     // TOXIC MESSAGE DOES NOT GET XP
-    // ========================================================
 
     let gamification:
       | ChatResponse['gamification']
@@ -637,9 +599,7 @@ export async function processChatMessage(
     };
   }
 
-  // ==========================================================
   // 3. GENERATE RESPONSE
-  // ==========================================================
 
   let generatedResponse:
     string;
@@ -683,9 +643,7 @@ export async function processChatMessage(
     };
   }
 
-  // ==========================================================
   // 4. OUTPUT MODERATION
-  // ==========================================================
 
   let outputModerationResult:
     ModerationResult;
@@ -734,9 +692,7 @@ export async function processChatMessage(
       outputModerationResult,
     );
 
-  // ==========================================================
   // OUTPUT MODERATION UNAVAILABLE
-  // ==========================================================
 
   if (
     outputModerationResult.serviceAvailable ===
@@ -769,9 +725,7 @@ export async function processChatMessage(
     };
   }
 
-  // ==========================================================
   // OUTPUT TOXIC
-  // ==========================================================
 
   /**
    * Output TOXIC tidak menghasilkan strike
@@ -812,9 +766,7 @@ export async function processChatMessage(
     };
   }
 
-  // ==========================================================
   // 5. GAMIFICATION
-  // ==========================================================
 
   let gamification:
     | ChatResponse['gamification']
@@ -851,9 +803,7 @@ export async function processChatMessage(
     );
   }
 
-  // ==========================================================
   // 6. SUCCESS
-  // ==========================================================
 
   return {
     success: true,
@@ -880,10 +830,6 @@ export async function processChatMessage(
   };
 }
 
-// ============================================================
-// ALIASES
-// ============================================================
-
 /**
  * Jika controller lama memanggil processChat(),
  * kode tersebut tetap dapat digunakan.
@@ -899,9 +845,5 @@ export const processChat =
 
 export const handleChatMessage =
   processChatMessage;
-
-// ============================================================
-// DEFAULT EXPORT
-// ============================================================
 
 export default processChatMessage;

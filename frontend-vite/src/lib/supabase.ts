@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// ============================================================
 // ENV
-// ============================================================
 
 const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL;
@@ -10,9 +8,7 @@ const supabaseUrl =
 const supabaseAnonKey =
   import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// ============================================================
 // VALIDATION
-// ============================================================
 
 if (!supabaseUrl) {
   throw new Error(
@@ -26,9 +22,7 @@ if (!supabaseAnonKey) {
   );
 }
 
-// ============================================================
 // SUPABASE CLIENT
-// ============================================================
 
 export const supabase =
   createClient(

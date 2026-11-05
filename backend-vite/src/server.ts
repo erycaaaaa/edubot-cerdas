@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes';
 import chatRoutes from './routes/chatRoutes';
 import studentRoutes from './routes/studentRoutes';
 import teacherRoutes from './routes/teacherRoutes';
+import headmasterRoutes from './routes/headmasterRoutes';
 import adminRoutes from './routes/adminRoutes';
 
 import { checkGeneratorHealth } from './services/moderationService';
@@ -86,6 +87,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/me', studentRoutes);
 
 app.use('/api/teacher', teacherRoutes);
+app.use('/api/headmaster', headmasterRoutes);
 app.use('/api/admin', adminRoutes);
 
 /* ============================================================

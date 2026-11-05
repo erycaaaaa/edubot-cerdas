@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth';
 import {
+  getClasses,
   getStudents,
   getNotifications,
   markNotificationRead,
@@ -12,6 +13,9 @@ const router = Router();
 
 // All teacher routes require authentication and teacher role
 router.use(requireAuth, requireRole('teacher'));
+
+// GET /api/teacher/classes
+router.get('/classes', getClasses);
 
 // GET /api/teacher/students
 router.get('/students', getStudents);

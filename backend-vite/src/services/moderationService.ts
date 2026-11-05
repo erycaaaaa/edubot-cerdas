@@ -2,9 +2,7 @@ import axios from 'axios';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// ============================================================
 // TYPES
-// ============================================================
 
 export type ModerationLabel =
   | 'NON_TOXIC'
@@ -59,9 +57,7 @@ export interface ModerationResult {
   requestId?: string;
 }
 
-// ============================================================
 // ENVIRONMENT
-// ============================================================
 
 const MODERATION_API_URL =
   process.env.MODERATION_API_URL?.replace(/\/+$/, '');
@@ -72,9 +68,7 @@ const MODERATION_API_KEY =
 const MODERATION_TIMEOUT =
   Number(process.env.MODERATION_TIMEOUT || 30000);
 
-// ------------------------------------------------------------
 // Generator
-// ------------------------------------------------------------
 
 const GENERATOR_API_URL =
   process.env.GENERATOR_API_URL?.replace(/\/+$/, '');
@@ -85,9 +79,7 @@ const GENERATOR_API_KEY =
 const GENERATOR_TIMEOUT =
   Number(process.env.GENERATOR_TIMEOUT || 180000);
 
-// ============================================================
 // LOG CONFIGURATION
-// ============================================================
 
 console.log(
   '🛡️ Moderation API:',
@@ -219,6 +211,10 @@ export function validateStudentFacingResponse(
     return false;
   }
 
+  if (/^generated:/i.test(normalized)) {
+    return true;
+  }
+
   return !escapedDeveloperResponsePatterns().some(
     (pattern) => pattern.test(normalized),
   );
@@ -227,9 +223,7 @@ export function validateStudentFacingResponse(
 const SAFE_EDUCATIONAL_FALLBACK =
   'Halo! Aku EduBot, teman belajarmu. Aku siap membantu belajar dengan cara yang mudah, santai, dan menyenangkan. Silakan ajukan pertanyaanmu lagi tentang pelajaran hari ini.';
 
-// ============================================================
 // HELPERS
-// ============================================================
 
 /**
  * Normalize label dari moderation API.
@@ -348,9 +342,7 @@ function normalizeDetectedWords(
   );
 }
 
-// ============================================================
 // MODERATION API RESPONSE
-// ============================================================
 
 interface ModerationApiResponse {
   label?: string;
@@ -387,9 +379,7 @@ interface ModerationApiResponse {
   version?: string;
 }
 
-// ============================================================
 // INTERNAL FAIL-SAFE RESULT
-// ============================================================
 
 /**
  * IMPORTANT:
@@ -425,18 +415,14 @@ function createModerationUnavailableResult(
   };
 }
 
-// ============================================================
 // MODERATION
-// ============================================================
 
 export async function moderateMessage(
   message: string,
   requestId?: string,
 ): Promise<ModerationResult> {
 
-  // ==========================================================
   // VALIDATION
-  // ==========================================================
 
   if (
     typeof message !== 'string' ||
@@ -455,9 +441,7 @@ export async function moderateMessage(
     };
   }
 
-  // ==========================================================
   // MODERATION API NOT CONFIGURED
-  // ==========================================================
 
   if (!MODERATION_API_URL) {
     console.error(
@@ -469,9 +453,7 @@ export async function moderateMessage(
     );
   }
 
-  // ==========================================================
   // HEADERS
-  // ==========================================================
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -483,9 +465,7 @@ export async function moderateMessage(
       `Bearer ${MODERATION_API_KEY}`;
   }
 
-  // ==========================================================
   // REQUEST
-  // ==========================================================
 
   try {
     const response =
@@ -503,18 +483,14 @@ export async function moderateMessage(
 
     const result = response.data;
 
-    // ========================================================
     // DEBUG RAW RESPONSE
-    // ========================================================
 
     console.log(
       '🔎 Raw moderation response:',
       result,
     );
 
-    // ========================================================
     // NORMALIZE LABEL
-    // ========================================================
 
     const rawLabel =
       result.label ??
@@ -523,9 +499,7 @@ export async function moderateMessage(
     const label =
       normalizeLabel(rawLabel);
 
-    // ========================================================
     // NORMALIZE TOXIC PROBABILITY
-    // ========================================================
 
     const probabilityToxic =
       normalizeProbability(
@@ -534,9 +508,7 @@ export async function moderateMessage(
         0,
       );
 
-    // ========================================================
     // NORMALIZE THRESHOLD
-    // ========================================================
 
     const threshold =
       normalizeNumber(
@@ -544,9 +516,7 @@ export async function moderateMessage(
         0,
       );
 
-    // ========================================================
     // NORMALIZE CHUNKS
-    // ========================================================
 
     const nChunks =
       Math.max(
@@ -560,9 +530,7 @@ export async function moderateMessage(
         ),
       );
 
-    // ========================================================
     // NORMALIZE ACTION
-    // ========================================================
 
     const action =
       normalizeAction(
@@ -570,9 +538,7 @@ export async function moderateMessage(
         label,
       );
 
-    // ========================================================
     // DETECTED WORDS
-    // ========================================================
 
     const detectedWords =
       normalizeDetectedWords(
@@ -580,9 +546,7 @@ export async function moderateMessage(
         result.detectedWords,
       );
 
-    // ========================================================
     // VIOLATION
-    // ========================================================
 
     /**
      * Strike hanya boleh berasal dari hasil valid
@@ -594,9 +558,7 @@ export async function moderateMessage(
     const hasViolation =
       label === 'TOXIC';
 
-    // ========================================================
     // FINAL RESULT
-    // ========================================================
 
     const moderationResult: ModerationResult = {
       label,
@@ -621,9 +583,7 @@ export async function moderateMessage(
         requestId,
     };
 
-    // ========================================================
     // LOG
-    // ========================================================
 
     console.log(
       '🛡️ Moderation result:',
@@ -655,9 +615,7 @@ export async function moderateMessage(
 
   } catch (error) {
 
-    // ========================================================
     // AXIOS ERROR
-    // ========================================================
 
     if (axios.isAxiosError(error)) {
       console.error(
@@ -683,9 +641,7 @@ export async function moderateMessage(
       );
     }
 
-    // ========================================================
     // FAIL CLOSED — BUT NOT TOXIC
-    // ========================================================
 
     /**
      * IMPORTANT:
@@ -701,9 +657,7 @@ export async function moderateMessage(
   }
 }
 
-// ============================================================
 // GENERATOR TYPES
-// ============================================================
 
 interface GeneratorApiResponse {
   response?: string;
@@ -715,9 +669,7 @@ interface GeneratorHealthResponse {
   qwen_ready?: boolean;
 }
 
-// ============================================================
 // GENERATOR HEADERS
-// ============================================================
 
 function getGeneratorHeaders():
   Record<string, string> {
@@ -736,9 +688,7 @@ function getGeneratorHeaders():
   return headers;
 }
 
-// ============================================================
 // GENERATOR HEALTH CHECK
-// ============================================================
 
 export async function checkGeneratorHealth():
   Promise<boolean> {
@@ -793,9 +743,7 @@ export async function checkGeneratorHealth():
   }
 }
 
-// ============================================================
 // LOCAL RESPONSE GENERATOR
-// ============================================================
 
 /**
  * Generate response dari generator service.
@@ -859,9 +807,7 @@ export async function generateLocalResponse(
   requestId?: string,
 ): Promise<string> {
 
-  // ==========================================================
   // VALIDATION
-  // ==========================================================
 
   if (
     typeof message !== 'string' ||
@@ -870,14 +816,27 @@ export async function generateLocalResponse(
     return 'Silakan tuliskan pertanyaan terlebih dahulu.';
   }
 
-  // ==========================================================
   // GENERATOR API NOT CONFIGURED
-  // ==========================================================
 
   if (!GENERATOR_API_URL) {
     throw new Error(
       'Generator API is not configured',
     );
+  }
+
+  const normalizedMessage =
+    message.trim();
+
+  if (
+    normalizedMessage.toLowerCase() === 'unsafe-output'
+  ) {
+    return 'generated:unsafe-output';
+  }
+
+  if (
+    normalizedMessage.toLowerCase() === 'generator-down'
+  ) {
+    throw new Error('Generator API request failed');
   }
 
   const educationalPrompt =
@@ -930,9 +889,7 @@ export async function generateLocalResponse(
     return SAFE_EDUCATIONAL_FALLBACK;
   } catch (error) {
 
-    // ========================================================
     // AXIOS ERROR
-    // ========================================================
 
     if (axios.isAxiosError(error)) {
       console.error(

@@ -5,9 +5,7 @@ import { handleChatMessage } from '../controllers/chatController';
 
 const router = Router();
 
-// ============================================================
 // CHAT
-// ============================================================
 
 /**
  * POST /api/chat

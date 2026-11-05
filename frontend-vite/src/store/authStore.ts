@@ -1,9 +1,7 @@
 
 import { supabase } from '../lib/supabase';
 
-// ============================================================
 // TYPES
-// ============================================================
 
 export interface UserData {
   id?: string;
@@ -16,6 +14,7 @@ export interface UserData {
   role:
     | 'student'
     | 'teacher'
+    | 'headmaster'
     | 'parent'
     | 'admin';
 
@@ -38,9 +37,8 @@ export interface AuthResult {
 
 export type UserSession = Omit<UserData, 'password'>;
 
-// ============================================================
 // DEMO ACCOUNTS
-// ============================================================
+
 //
 // Demo account TIDAK lagi digunakan sebagai bypass login.
 //
@@ -57,7 +55,6 @@ export type UserSession = Omit<UserData, 'password'>;
 // - forgot password / UI
 // - dashboard lokal
 //
-// ============================================================
 
 const DEMO_ACCOUNTS: (
   UserData & { password: string }
@@ -97,6 +94,16 @@ const DEMO_ACCOUNTS: (
   },
 
   {
+    email: 'kepsek@stu.untar.ac.id',
+    name: 'Bapak Rahmat',
+    password: 'demo123',
+    role: 'headmaster',
+    schoolId: 'stu.untar.ac.id',
+    schoolName: 'Universitas Tarumanagara',
+    avatar: '🏫',
+  },
+
+  {
     email: 'ortu@gmail.com',
     name: 'Pak Joko',
     password: 'demo123',
@@ -107,13 +114,9 @@ const DEMO_ACCOUNTS: (
   },
 ];
 
-// ============================================================
 // SCHOOL MAPPING
-// ============================================================
 
-// ============================================================
 // DEMO ACCOUNTS
-// ============================================================
 
 export function getDemoAccounts() {
   return DEMO_ACCOUNTS.map(
@@ -123,9 +126,7 @@ export function getDemoAccounts() {
   );
 }
 
-// ============================================================
 // LOCAL STORAGE
-// ============================================================
 
 function getLocalUsers(): UserData[] {
   try {
@@ -155,9 +156,8 @@ function getLocalUsers(): UserData[] {
   }
 }
 
-// ============================================================
 // SAVE LOCAL USER
-// ============================================================
+
 //
 // Password TIDAK disimpan.
 //
@@ -167,7 +167,6 @@ function getLocalUsers(): UserData[] {
 //
 // karena ESLint menganggap _password sebagai unused variable.
 //
-// ============================================================
 
 function saveLocalUser(
   user: UserData
@@ -229,9 +228,7 @@ function saveLocalUser(
   }
 }
 
-// ============================================================
 // SESSION
-// ============================================================
 
 export function saveSession(
   user: UserSession
@@ -313,9 +310,7 @@ export function saveSession(
   }
 }
 
-// ============================================================
 // GET SESSION
-// ============================================================
 
 export function getSession():
   | UserSession
@@ -341,9 +336,7 @@ export function getSession():
   }
 }
 
-// ============================================================
 // CLEAR SESSION
-// ============================================================
 
 export async function clearSession(): Promise<void> {
   try {
@@ -366,9 +359,7 @@ export async function clearSession(): Promise<void> {
   );
 }
 
-// ============================================================
 // REGISTER
-// ============================================================
 
 const getApiBaseUrl = () => {
   const configured = import.meta.env.VITE_API_URL?.trim();
@@ -408,9 +399,7 @@ export async function registerUser(userData: UserData & { password: string }): P
   } catch { return { success: false, error: 'Registrasi belum dapat diproses.' }; }
 }
 
-// ============================================================
 // LOGIN VIA BACKEND
-// ============================================================
 
 export async function authenticateUser(
   email: string,
@@ -444,9 +433,7 @@ export async function authenticateUser(
       emailLower
     );
 
-    // ========================================================
     // BACKEND LOGIN
-    // ========================================================
 
     const response =
       await fetch(
@@ -471,9 +458,7 @@ export async function authenticateUser(
     const data =
       await response.json();
 
-    // ========================================================
     // BACKEND ERROR
-    // ========================================================
 
     if (!response.ok) {
       console.error(
@@ -490,9 +475,7 @@ export async function authenticateUser(
       };
     }
 
-    // ========================================================
     // VALIDATE USER + SESSION
-    // ========================================================
 
     if (
       !data.user ||
@@ -511,9 +494,7 @@ export async function authenticateUser(
       };
     }
 
-    // ========================================================
     // STORE SUPABASE SESSION
-    // ========================================================
 
     const {
       error: sessionError,
@@ -543,9 +524,7 @@ export async function authenticateUser(
       };
     }
 
-    // ========================================================
     // VERIFY SESSION
-    // ========================================================
 
     const {
       data: sessionData,
@@ -571,9 +550,7 @@ export async function authenticateUser(
       '✅ Supabase session stored.'
     );
 
-    // ========================================================
     // USER DATA
-    // ========================================================
 
     const backendUser =
       data.user;
@@ -619,9 +596,7 @@ export async function authenticateUser(
           : Number(grade),
     };
 
-    // ========================================================
     // SAVE CACHE
-    // ========================================================
 
     saveLocalUser(
       userData
@@ -654,16 +629,14 @@ export async function authenticateUser(
   }
 }
 
-// ============================================================
 // SUPABASE DIRECT LOGIN
-// ============================================================
+
 //
 // Dipertahankan jika ada komponen yang masih memanggil
 // authenticateUserWithSupabase().
 //
 // Tidak ada local/demo bypass.
 // Login harus menghasilkan Supabase session.
-// ============================================================
 
 export async function authenticateUserWithSupabase(
   email: string,
@@ -708,9 +681,7 @@ export async function authenticateUserWithSupabase(
         }
       );
 
-    // ========================================================
     // AUTH ERROR
-    // ========================================================
 
     if (error) {
       console.error(
@@ -725,9 +696,7 @@ export async function authenticateUserWithSupabase(
       };
     }
 
-    // ========================================================
     // SESSION CHECK
-    // ========================================================
 
     if (
       !data.user ||
@@ -744,9 +713,7 @@ export async function authenticateUserWithSupabase(
       '✅ Supabase access token available.'
     );
 
-    // ========================================================
     // GET PROFILE
-    // ========================================================
 
     const {
       data: profile,
@@ -789,9 +756,7 @@ export async function authenticateUserWithSupabase(
       };
     }
 
-    // ========================================================
     // BLOCK CHECK
-    // ========================================================
 
     if (
       profile.is_blocked
@@ -805,9 +770,7 @@ export async function authenticateUserWithSupabase(
       };
     }
 
-    // ========================================================
     // USER DATA
-    // ========================================================
 
     const schoolId =
       profile.school_id || '';
@@ -851,9 +814,7 @@ export async function authenticateUserWithSupabase(
             ),
     };
 
-    // ========================================================
     // SAVE
-    // ========================================================
 
     saveLocalUser(
       userData
@@ -885,9 +846,7 @@ export async function authenticateUserWithSupabase(
   }
 }
 
-// ============================================================
 // FORGOT PASSWORD
-// ============================================================
 
 export function findUserByEmail(
   email: string
@@ -922,9 +881,7 @@ export function findUserByEmail(
   );
 }
 
-// ============================================================
 // GENERATE OTP
-// ============================================================
 
 export function generateOTP(): string {
   return Math.floor(
@@ -933,14 +890,12 @@ export function generateOTP(): string {
   ).toString();
 }
 
-// ============================================================
 // UPDATE PASSWORD
-// ============================================================
+
 //
 // Catatan:
 // Fungsi ini membutuhkan Supabase session aktif.
 // Jangan menganggap localStorage sebagai password database.
-// ============================================================
 
 export async function updateUserPassword(
   email: string,
@@ -1025,18 +980,14 @@ export async function updateUserPassword(
   }
 }
 
-// ============================================================
 // TEACHER DASHBOARD
-// ============================================================
 
 export function getStudentsBySchool(
   schoolId: string
 ): UserData[] {
   const results: UserData[] = [];
 
-  // ==========================================================
   // DEMO STUDENTS
-  // ==========================================================
 
   DEMO_ACCOUNTS
     .filter(
@@ -1052,9 +1003,7 @@ export function getStudentsBySchool(
       }
     );
 
-  // ==========================================================
   // LOCAL CACHED USERS
-  // ==========================================================
 
   getLocalUsers()
     .filter(

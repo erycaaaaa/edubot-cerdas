@@ -38,9 +38,9 @@ export async function registerUser(
     res.status(400).json({ message: 'Gunakan email valid, nama maksimal 100 karakter, dan password minimal 8 karakter.' });
     return;
   }
-  // Teacher access is provisioned by a trusted administrator, never self-approved.
-  if (role === 'teacher') {
-    res.status(403).json({ message: 'Akun guru harus dibuat oleh administrator sekolah. Hubungi sekolah untuk mendapatkan akses.' });
+  // Teacher and headmaster access is provisioned by a trusted administrator, never self-approved.
+  if (role === 'teacher' || role === 'headmaster') {
+    res.status(403).json({ message: 'Akun guru dan kepala sekolah harus dibuat oleh administrator sekolah. Hubungi sekolah untuk mendapatkan akses.' });
     return;
   }
   if (role != null && role !== 'student' && role !== 'parent') {
@@ -185,7 +185,7 @@ export async function loginUser(
     }
 
     let schoolName: string | undefined;
-    if (profile.role === 'teacher') {
+    if (profile.role === 'teacher' || profile.role === 'headmaster') {
       const { data: school, error } = await supabaseAdmin.from('schools').select('id,name,is_active').eq('id', profile.school_id || '').maybeSingle();
       if (error) { res.status(503).json({ message: 'Status sekolah belum dapat diperiksa.' }); return; }
       if (!school?.is_active) { res.status(403).json({ message: 'Sekolah belum ditentukan atau sedang tidak aktif.' }); return; }

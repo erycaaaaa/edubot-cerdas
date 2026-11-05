@@ -41,6 +41,7 @@ function ProtectedRoute({ role }: { role: Role }) {
 }
 export function StudentArea() { return <ProtectedRoute role="student" />; }
 export function TeacherArea() { return <ProtectedRoute role="teacher" />; }
+export function HeadmasterArea() { return <ProtectedRoute role="headmaster" />; }
 export function ParentArea() { return <ProtectedRoute role="parent" />; }
 
 export function AdminArea() { return <ProtectedRoute role="admin" />; }

@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router';
-import { StudentArea, TeacherArea, ParentArea, AdminArea } from './components/ProtectedRoute';
+import { StudentArea, TeacherArea, HeadmasterArea, ParentArea, AdminArea } from './components/ProtectedRoute';
 
 // Lazy pages avoid loading unrelated dashboards at startup.
 export const router = createBrowserRouter([
@@ -18,6 +18,9 @@ export const router = createBrowserRouter([
   ] },
   { Component: TeacherArea, children: [
     { path: '/teacher/dashboard', lazy: async () => ({ Component: (await import('./pages/TeacherDashboard')).default }) },
+  ] },
+  { Component: HeadmasterArea, children: [
+    { path: '/headmaster/dashboard', lazy: async () => ({ Component: (await import('./pages/HeadmasterDashboard')).default }) },
   ] },
   { Component: ParentArea, children: [
     { path: '/parent/dashboard', lazy: async () => ({ Component: (await import('./pages/ParentDashboard')).default }) },

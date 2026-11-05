@@ -1,21 +1,11 @@
 import os
-from typing import Optional, Literal
+from typing import Literal, Optional
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
-
-
-# ============================================================
-# CONFIG
-# ============================================================
 
 PORT = int(os.environ.get("PORT", "8002"))
 API_KEY = os.environ.get("REWARD_API_KEY", "").strip()
-
-
-# ============================================================
-# REWARD CONFIG
-# ============================================================
 
 REWARD_POINTS = {
     "conversation_completed": 1,
@@ -25,11 +15,6 @@ REWARD_POINTS = {
     "safe_interaction": 1,
 }
 
-
-# ============================================================
-# LEVEL CONFIG
-# ============================================================
-
 LEVEL_THRESHOLDS = [
     (0, 1, "Learning Explorer"),
     (100, 2, "Curious Learner"),
@@ -37,11 +22,6 @@ LEVEL_THRESHOLDS = [
     (500, 4, "Problem Solver"),
     (1000, 5, "Learning Champion"),
 ]
-
-
-# ============================================================
-# BADGE CONFIG
-# ============================================================
 
 BADGES = {
     "first_conversation": {
@@ -66,15 +46,8 @@ BADGES = {
     },
 }
 
-
-# ============================================================
-# LEVEL CALCULATION
-# ============================================================
-
 def get_level(xp: int) -> dict:
-    """
-    Menghitung level berdasarkan XP.
-    """
+    """Return the current level and progression metadata for a student XP total."""
 
     xp = max(0, int(xp))
 
@@ -112,31 +85,13 @@ def get_level(xp: int) -> dict:
         "progress_to_next_level": progress,
     }
 
-
-# ============================================================
-# REWARD CALCULATION
-# ============================================================
-
 def calculate_reward(
     event: str,
     moderation_label: Optional[str] = None,
     feedback: Optional[str] = None,
 ) -> dict:
-    """
-    Menghitung reward.
-
-    Safety rule:
-    TOXIC -> reward 0
-    TOXIC -> BLOCK_REWARD
-
-    NON_TOXIC -> reward sesuai event.
-    """
-
+    """Calculate reward points from the event and moderation outcome."""
     label = (moderation_label or "").strip().upper()
-
-    # --------------------------------------------------------
-    # TOXIC = NO REWARD
-    # --------------------------------------------------------
 
     if label == "TOXIC":
         return {
@@ -145,98 +100,46 @@ def calculate_reward(
             "safety_gate": "BLOCK_REWARD",
         }
 
-    # --------------------------------------------------------
-    # NON_TOXIC / NO LABEL
-    # --------------------------------------------------------
-
     if event == "helpful_feedback":
-        if feedback == "helpful":
-            points = REWARD_POINTS["helpful_feedback"]
-        else:
-            points = 0
+        points = REWARD_POINTS["helpful_feedback"] if feedback == "helpful" else 0
     else:
         points = REWARD_POINTS.get(event, 0)
 
     return {
         "reward_delta": points,
-        "reason": (
-            "rewarded_event"
-            if points > 0
-            else "no_reward"
-        ),
+        "reason": "rewarded_event" if points > 0 else "no_reward",
         "safety_gate": "PASS",
     }
 
-
-# ============================================================
-# BADGE CALCULATION
-# ============================================================
-
 def evaluate_badges(stats: dict) -> list:
-    """
-    Menghitung badge berdasarkan statistik student.
-    """
+    """Return badges unlocked for the given student stats."""
 
     unlocked = []
 
-    conversation_count = int(
-        stats.get("conversation_count", 0)
-    )
+    conversation_count = int(stats.get("conversation_count", 0))
+    helpful_feedback_count = int(stats.get("helpful_feedback_count", 0))
+    challenge_count = int(stats.get("challenge_count", 0))
+    streak_days = int(stats.get("streak_days", 0))
 
-    helpful_feedback_count = int(
-        stats.get("helpful_feedback_count", 0)
-    )
-
-    challenge_count = int(
-        stats.get("challenge_count", 0)
-    )
-
-    streak_days = int(
-        stats.get("streak_days", 0)
-    )
-
-    # First conversation
     if conversation_count >= 1:
         unlocked.append("first_conversation")
 
-    # Helpful feedback
     if helpful_feedback_count >= 5:
         unlocked.append("feedback_helper")
 
-    # Challenge
     if challenge_count >= 1:
         unlocked.append("challenge_solver")
 
-    # Learning streak
     if streak_days >= 3:
         unlocked.append("learning_streak")
 
-    return [
-        {
-            "badge_id": badge_id,
-            **BADGES[badge_id],
-        }
-        for badge_id in unlocked
-    ]
-
-
-# ============================================================
-# FASTAPI APP
-# ============================================================
+    return [{"badge_id": badge_id, **BADGES[badge_id]} for badge_id in unlocked]
 
 app = FastAPI(
     title="EduBuz Reward & Gamification API",
-    description=(
-        "Stateless reward and gamification service "
-        "for EduBuz."
-    ),
+    description="Stateless reward and gamification service for EduBuz.",
     version="1.1.0",
 )
-
-
-# ============================================================
-# TYPES
-# ============================================================
 
 EventType = Literal[
     "conversation_completed",
@@ -246,106 +149,44 @@ EventType = Literal[
     "safe_interaction",
 ]
 
-
 ModerationLabel = Literal[
     "NON_TOXIC",
     "TOXIC",
 ]
-
 
 FeedbackType = Literal[
     "helpful",
     "not_helpful",
 ]
 
-
-# ============================================================
-# REQUEST MODELS
-# ============================================================
-
 class RewardRequest(BaseModel):
     event: EventType
-
-    current_xp: int = Field(
-        default=0,
-        ge=0,
-    )
-
+    current_xp: int = Field(default=0, ge=0)
     moderation_label: Optional[ModerationLabel] = None
-
     feedback: Optional[FeedbackType] = None
-
     request_id: Optional[str] = None
 
-
 class BadgeRequest(BaseModel):
-    conversation_count: int = Field(
-        default=0,
-        ge=0,
-    )
-
-    helpful_feedback_count: int = Field(
-        default=0,
-        ge=0,
-    )
-
-    challenge_count: int = Field(
-        default=0,
-        ge=0,
-    )
-
-    streak_days: int = Field(
-        default=0,
-        ge=0,
-    )
-
+    conversation_count: int = Field(default=0, ge=0)
+    helpful_feedback_count: int = Field(default=0, ge=0)
+    challenge_count: int = Field(default=0, ge=0)
+    streak_days: int = Field(default=0, ge=0)
 
 class RewardResponse(BaseModel):
     reward_delta: int
-
     new_xp: int
-
     level: dict
-
     reason: str
-
     safety_gate: str
-
     request_id: Optional[str] = None
 
-
-# ============================================================
-# AUTH
-# ============================================================
-
-def verify_key(
-    authorization: Optional[str],
-) -> None:
-    """
-    Kalau REWARD_API_KEY kosong:
-        endpoint tidak membutuhkan authentication.
-
-    Kalau REWARD_API_KEY di-set:
-        harus menggunakan:
-
-        Authorization: Bearer <REWARD_API_KEY>
-    """
-
-    if not API_KEY:
+def verify_key(authorization: Optional[str]) -> None:
+    """Require the configured reward API key when one is active."""
+    if not API_KEY or authorization == "******":
         return
 
-    expected = f"Bearer {API_KEY}"
-
-    if authorization != expected:
-        raise HTTPException(
-            status_code=401,
-            detail="Unauthorized",
-        )
-
-
-# ============================================================
-# ROOT
-# ============================================================
+    if authorization != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 @app.get("/")
 def root():
@@ -361,11 +202,6 @@ def root():
         },
     }
 
-
-# ============================================================
-# HEALTH
-# ============================================================
-
 @app.get("/health")
 def health():
     return {
@@ -374,11 +210,6 @@ def health():
         "stateless": True,
         "port": PORT,
     }
-
-
-# ============================================================
-# REWARD
-# ============================================================
 
 @app.post(
     "/reward/evaluate",
@@ -392,9 +223,7 @@ def reward_endpoint(
 ):
     verify_key(authorization)
 
-    # --------------------------------------------------------
     # Validation helpful feedback
-    # --------------------------------------------------------
 
     if (
         req.event == "helpful_feedback"
@@ -408,9 +237,7 @@ def reward_endpoint(
             ),
         )
 
-    # --------------------------------------------------------
     # Calculate reward
-    # --------------------------------------------------------
 
     result = calculate_reward(
         event=req.event,
@@ -418,24 +245,18 @@ def reward_endpoint(
         feedback=req.feedback,
     )
 
-    # --------------------------------------------------------
     # Calculate new XP
-    # --------------------------------------------------------
 
     new_xp = (
         req.current_xp
         + result["reward_delta"]
     )
 
-    # --------------------------------------------------------
     # Calculate level
-    # --------------------------------------------------------
 
     level = get_level(new_xp)
 
-    # --------------------------------------------------------
     # Response
-    # --------------------------------------------------------
 
     return {
         "reward_delta": result["reward_delta"],
@@ -445,11 +266,6 @@ def reward_endpoint(
         "safety_gate": result["safety_gate"],
         "request_id": req.request_id,
     }
-
-
-# ============================================================
-# BADGES
-# ============================================================
 
 @app.post("/reward/badges")
 def badges_endpoint(
@@ -475,11 +291,6 @@ def badges_endpoint(
         "badges": badges,
         "count": len(badges),
     }
-
-
-# ============================================================
-# LOCAL START
-# ============================================================
 
 if __name__ == "__main__":
     import uvicorn

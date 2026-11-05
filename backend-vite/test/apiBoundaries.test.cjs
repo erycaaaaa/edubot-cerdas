@@ -28,11 +28,30 @@ before(async () => {
     if (url.pathname === '/rest/v1/profiles') {
       assert.ok(!url.searchParams.get('select')?.includes('full_name'), 'Only migrated profile columns may be selected');
       const id = url.searchParams.get('id')?.slice(3);
+      if (url.searchParams.get('school_id') === 'eq.school.test' && url.searchParams.get('role') === 'eq.student') {
+        return send(200, [
+          { id: 'student-one', name: 'student-one', email: 'student-one@school.test', role: 'student', school_id: 'school.test', avatar: '🦁', strike_count: 0, is_blocked: false },
+          { id: 'student-two', name: 'student-two', email: 'student-two@school.test', role: 'student', school_id: 'school.test', avatar: '🦁', strike_count: 1, is_blocked: false },
+        ]);
+      }
       if (!id) return send(200, []);
       const user = Object.values(users).find(value => value.id === id);
       return send(200, { ...user, email: `${id}@school.test`, name: id, school_id: 'school.test', avatar: '🦁', strike_count: 0, is_blocked: user?.is_blocked ?? false });
     }
     if (url.pathname === '/rest/v1/schools') return send(200, [{ id: 'school.test', is_active: true }]);
+    if (url.pathname === '/rest/v1/classes') {
+      if (url.searchParams.get('teacher_id') === 'eq.teacher-one') {
+        return send(200, [{ id: 'class-one', name: '1A', grade: 1, teacher_id: 'teacher-one', school_id: 'school.test' }]);
+      }
+      return send(200, []);
+    }
+    if (url.pathname === '/rest/v1/class_students') {
+      const classId = url.searchParams.get('class_id');
+      if (classId && classId.includes('class-one')) {
+        return send(200, [{ student_id: 'student-one' }, { student_id: 'student-two' }]);
+      }
+      return send(200, []);
+    }
     if (url.pathname === '/rest/v1/student_gamification') return send(200, [{ student_id: 'student-one', xp: 1, level: 1, exp_spent: 0 }]);
     if (url.pathname === '/rest/v1/gamification_events') {
       assert.equal(url.searchParams.get('event_type'), 'eq.conversation_completed');
@@ -58,7 +77,15 @@ before(async () => {
     }
     if (url.pathname === '/rest/v1/rpc/unlock_avatar') return send(400, { message: 'INSUFFICIENT_EXP', code: 'P0001' });
     if (url.pathname === '/rest/v1/rpc/equip_avatar') return send(400, { message: 'AVATAR_NOT_OWNED', code: 'P0001' });
-    if (url.pathname === '/rest/v1/teacher_notifications') return send(200, []);
+    if (url.pathname === '/rest/v1/teacher_notifications') {
+      if (url.searchParams.get('school_id') === 'eq.school.test' && url.searchParams.get('student_id')?.includes('student-one')) {
+        return send(200, [{ id: 'notice-one', student_id: 'student-one', school_id: 'school.test', title: 'Reminder', description: 'Test', is_read: false }]);
+      }
+      return send(200, []);
+    }
+    if (url.pathname === '/rest/v1/teacher_notifications/foreign-id') {
+      return send(200, { id: 'foreign-id', student_id: 'student-two', school_id: 'school.test' });
+    }
     return send(404, { message: 'Unexpected fixture request' });
   });
   await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));

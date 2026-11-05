@@ -10,9 +10,7 @@ const GAMIFICATION_API_KEY =
 
 const GAMIFICATION_TIMEOUT = Number(process.env.GAMIFICATION_TIMEOUT) || 10000;
 
-// ============================================================
 // TYPES
-// ============================================================
 
 export type ModerationLabel =
   | 'NON_TOXIC'
@@ -86,9 +84,7 @@ export interface StudentGamification {
   levelInfo: ReturnType<typeof describeLevel>;
 }
 
-// ============================================================
 // HTTP HELPERS
-// ============================================================
 
 function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
@@ -161,9 +157,7 @@ async function parseResponse<T>(
   return data as T;
 }
 
-// ============================================================
 // REWARD API
-// ============================================================
 
 export async function evaluateReward(
   request: RewardRequest,
@@ -228,9 +222,7 @@ export async function evaluateReward(
   );
 }
 
-// ============================================================
 // BADGES
-// ============================================================
 
 export async function evaluateBadges(
   stats: BadgeRequest,
@@ -282,9 +274,7 @@ export async function evaluateBadges(
   );
 }
 
-// ============================================================
 // CONVERSATION REWARD
-// ============================================================
 
 export async function evaluateConversationReward(
   params: {
@@ -308,9 +298,7 @@ export async function evaluateConversationReward(
   });
 }
 
-// ============================================================
 // GET GAMIFICATION
-// ============================================================
 
 export function describeLevel(xp: number) {
   const thresholds = [0, 100, 250, 500, 1000];
@@ -333,9 +321,7 @@ export async function getGamification(studentId: string): Promise<StudentGamific
     updatedAt: data?.updated_at ?? null, avatar: profile.data?.avatar ?? '🦁', levelInfo: describeLevel(xp) };
 }
 
-// ============================================================
 // PERSIST REWARD
-// ============================================================
 
 export async function persistReward(
   studentId: string, requestId: string, reward: RewardResponse,
@@ -354,9 +340,7 @@ export async function persistReward(
     level: describeLevel(data.xp), exp_balance: data.expBalance };
 }
 
-// ============================================================
 // PROCESS CONVERSATION REWARD
-// ============================================================
 
 export async function processConversationReward(
   params: {
@@ -391,9 +375,7 @@ export async function processConversationReward(
   );
 }
 
-// ============================================================
 // RECORD FEEDBACK
-// ============================================================
 
 export async function recordFeedback(
   params: {
@@ -470,9 +452,7 @@ export async function recordFeedback(
   );
 }
 
-// ============================================================
 // HEALTH CHECK
-// ============================================================
 
 export async function checkGamificationHealth(): Promise<boolean> {
   try {
@@ -514,9 +494,7 @@ export async function checkGamificationHealth(): Promise<boolean> {
   }
 }
 
-// ============================================================
 // DEFAULT EXPORT
-// ============================================================
 
 export default {
   evaluateReward,

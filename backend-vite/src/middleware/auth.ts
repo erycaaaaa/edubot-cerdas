@@ -6,14 +6,12 @@ import {
 
 import { supabaseAdmin } from '../services/supabaseService';
 
-// ============================================================
 // AUTH USER TYPE
-// ============================================================
 
 export interface AuthUser {
   id: string;
   email: string;
-  role: 'student' | 'teacher' | 'parent' | 'admin';
+  role: 'student' | 'teacher' | 'headmaster' | 'parent' | 'admin';
   schoolId: string;
   schoolName?: string;
   name: string;
@@ -23,9 +21,7 @@ export interface AuthUser {
   strikeCount: number;
 }
 
-// ============================================================
 // EXPRESS TYPE EXTENSION
-// ============================================================
 
 declare global {
   namespace Express {
@@ -35,9 +31,7 @@ declare global {
   }
 }
 
-// ============================================================
 // REQUIRE AUTH
-// ============================================================
 
 /**
  * Verify Supabase access token and attach
@@ -53,9 +47,7 @@ export async function requireAuth(
 ): Promise<void> {
   const authHeader = req.headers.authorization;
 
-  // ----------------------------------------------------------
   // 1. CHECK AUTHORIZATION HEADER
-  // ----------------------------------------------------------
 
   if (!authHeader) {
     console.warn(
@@ -81,9 +73,7 @@ export async function requireAuth(
     return;
   }
 
-  // ----------------------------------------------------------
   // 2. EXTRACT ACCESS TOKEN
-  // ----------------------------------------------------------
 
   const token = authHeader
     .slice('Bearer '.length)
@@ -102,9 +92,8 @@ export async function requireAuth(
   }
 
   try {
-    // --------------------------------------------------------
+
     // 3. VERIFY TOKEN WITH SUPABASE
-    // --------------------------------------------------------
 
     const {
       data: { user },
@@ -124,9 +113,7 @@ export async function requireAuth(
       return;
     }
 
-    // --------------------------------------------------------
     // 4. LOAD PROFILE
-    // --------------------------------------------------------
 
     const {
       data: profile,
@@ -162,13 +149,12 @@ export async function requireAuth(
       return;
     }
 
-    // --------------------------------------------------------
     // 5. VALIDATE ROLE
-    // --------------------------------------------------------
 
     const validRoles = [
       'student',
       'teacher',
+      'headmaster',
       'parent',
       'admin',
     ] as const;
@@ -186,9 +172,7 @@ export async function requireAuth(
       return;
     }
 
-    // --------------------------------------------------------
     // 6. CHECK BLOCKED
-    // --------------------------------------------------------
 
     if (profile.is_blocked === true) {
       console.warn(
@@ -203,12 +187,10 @@ export async function requireAuth(
       return;
     }
 
-    // --------------------------------------------------------
     // 7. ATTACH AUTH USER
-    // --------------------------------------------------------
 
     let schoolName: string | undefined;
-    if (profile.role === 'teacher') {
+    if (profile.role === 'teacher' || profile.role === 'headmaster') {
       const { data: school, error } = await supabaseAdmin.from('schools').select('id,name,is_active').eq('id', profile.school_id || '').maybeSingle();
       if (error) { res.status(503).json({ error: 'Status sekolah belum dapat diperiksa.' }); return; }
       if (!school?.is_active) { res.status(403).json({ error: 'Sekolah belum ditentukan atau sedang tidak aktif.' }); return; }
@@ -231,9 +213,7 @@ export async function requireAuth(
       strikeCount: Number(profile.strike_count || 0),
     };
 
-    // --------------------------------------------------------
     // 8. LOG SUCCESS
-    // --------------------------------------------------------
 
     console.log(
       '✅ Authenticated:',
@@ -257,14 +237,13 @@ export async function requireAuth(
   }
 }
 
-// ============================================================
 // REQUIRE ROLE
-// ============================================================
 
 export function requireRole(
   ...roles: Array<
     'student' |
     'teacher' |
+    'headmaster' |
     'parent' |
     'admin'
   >

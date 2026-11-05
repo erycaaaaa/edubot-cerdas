@@ -23,6 +23,15 @@ const roles = [
     emoji: '👩‍🏫'
   },
   {
+    id: 'headmaster',
+    title: 'Kepala Sekolah',
+    description: 'Saya ingin memantau seluruh sekolah',
+    Icon: Users,
+    color: 'bg-[#3B4C5F]',
+    textColor: 'text-[#3B4C5F]',
+    emoji: '🏫'
+  },
+  {
     id: 'parent',
     title: 'Orang Tua',
     description: 'Saya ingin memantau anak',
@@ -68,7 +77,7 @@ export default function RoleSelection() {
         </motion.div>
 
         {/* Role Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
           {roles.map((role, index) => (
             <motion.div
               key={role.id}

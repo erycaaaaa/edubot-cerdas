@@ -55,7 +55,7 @@ export function AccountMenu() {
           {progress?.avatar && <span className="text-4xl" aria-hidden="true">{progress.avatar}</span>}
           <h3 className="mt-2 text-lg font-bold">{account.name}</h3>
           <p className="break-all text-sm text-txt-secondary">{account.email}</p>
-          <p className="mt-1 text-sm text-txt-secondary">{account.role === 'student' ? 'Siswa' : account.role === 'teacher' ? 'Guru' : account.role === 'parent' ? 'Orang tua' : account.role === 'admin' ? 'Admin' : 'Akun'}</p>
+          <p className="mt-1 text-sm text-txt-secondary">{account.role === 'student' ? 'Siswa' : account.role === 'teacher' ? 'Guru' : account.role === 'headmaster' ? 'Kepala sekolah' : account.role === 'parent' ? 'Orang tua' : account.role === 'admin' ? 'Admin' : 'Akun'}</p>
         </section>
         {account.role === 'student' && <section aria-label="Poin belajar" className="rounded-2xl border border-txt-muted/30 p-4">
           <h3 className="font-bold">Poin & level</h3>

@@ -49,6 +49,7 @@ Petunjuk rinci dan contoh environment ada pada README masing-masing komponen. CO
 4. [Development Rules](docs/04-DEVELOPMENT-RULES.md) — aturan kontrak, database, UI dan perintah pengembangan.
 5. [Design System](docs/05-DESIGN-SYSTEM.md) — palet, tema, komponen, kartu dan status UI.
 6. [Project Tasks](docs/06-PROJECT-TASKS.md) — status pekerjaan dan bukti verifikasi.
+7. [Reward & Gamification](docs/10-REWARD-GAMIFICATION.md) — alur reward, level dan badge, serta mekanisme keamanan dan persistence.
 
 Panduan ilustrasi: [kartu avatar](frontend-vite/public/avatars/README.md). Kode adalah acuan implementasi; perbarui dokumen ketika perilaku berubah. docs.zip adalah arsip distribusi lama dan belum disinkronkan pada pembaruan ini; gunakan berkas Markdown di docs sebagai acuan.
 
