@@ -11,12 +11,17 @@ describe('Vercel Serverless Function Invocation Tests', () => {
     // Simulate Vercel runtime environment
     process.env.VERCEL = '1';
 
-    // Import compiled server.js (as specified by entrypoint "dist/server.js")
-    const serverModule = require('../dist/server.js');
+    // Import root entrypoint (as specified by Vercel entrypoint "index.js")
+    const serverModule = require('../index.js');
     app = serverModule.default || serverModule;
 
     // Verify app is a callable express application / request handler
     assert.equal(typeof app, 'function', 'App export must be a function/request handler');
+
+    // Also verify dist/server.js directly
+    const distModule = require('../dist/server.js');
+    const distApp = distModule.default || distModule;
+    assert.equal(typeof distApp, 'function', 'Dist export must be a function/request handler');
 
     // Spin up a test server to execute HTTP calls against the app
     await new Promise((resolve) => {
