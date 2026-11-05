@@ -1,58 +1,70 @@
 import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
-// ENV
+// ENV & VALIDATION HELPERS
 
-const supabaseUrl =
-  process.env.SUPABASE_URL?.trim();
+export function getSupabaseCredentials(): { supabaseUrl: string; serviceKey: string } {
+  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-const serviceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!supabaseUrl) {
+    throw new Error('Missing SUPABASE_URL in environment');
+  }
 
-// VALIDATION
+  if (!serviceKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY in environment');
+  }
 
-if (!supabaseUrl) {
-  throw new Error(
-    'Missing SUPABASE_URL in environment'
-  );
+  if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+    throw new Error('SUPABASE_URL must begin with http:// or https://');
+  }
+
+  return { supabaseUrl, serviceKey };
 }
 
-if (!serviceKey) {
-  throw new Error(
-    'Missing SUPABASE_SERVICE_ROLE_KEY in environment'
-  );
-}
+// SUPABASE ADMIN CLIENT (LAZY INITIALIZATION)
 
-// SUPABASE ADMIN CLIENT
+let _adminClient: SupabaseClient | null = null;
 
-/**
- * Backend-only Supabase client.
- *
- * IMPORTANT:
- * - Service role key hanya boleh berada di backend.
- * - Jangan masukkan service role key ke frontend.
- * - Jangan expose key ini melalui API response.
- * - Never sign users in on this shared client: even with persistSession
- *   disabled, an in-memory user session replaces the database bearer token.
- */
-export const supabaseAdmin =
-  createClient(
-    supabaseUrl,
-    serviceKey,
-    {
+export function getSupabaseAdmin(): SupabaseClient {
+  if (!_adminClient) {
+    const { supabaseUrl, serviceKey } = getSupabaseCredentials();
+    _adminClient = createClient(supabaseUrl, serviceKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false,
       },
+    });
+    console.log('✅ Supabase Admin client initialized');
+  }
+  return _adminClient;
+}
+
+/**
+ * Proxied Supabase Admin client.
+ *
+ * Defers credential validation until first access.
+ * This prevents unhandled top-level crashes during serverless module evaluation
+ * (avoiding Vercel FUNCTION_INVOCATION_FAILED) while preserving the exact same API.
+ */
+export const supabaseAdmin: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    const client = getSupabaseAdmin();
+    const value = Reflect.get(client, prop, receiver);
+    if (typeof value === 'function') {
+      return value.bind(client);
     }
-  );
+    return value;
+  },
+});
 
 /** Isolate password-login sessions from the shared privileged DB client. */
-export function createLoginClient() {
-  return createClient(supabaseUrl!, serviceKey!, {
+export function createLoginClient(): SupabaseClient {
+  const { supabaseUrl, serviceKey } = getSupabaseCredentials();
+  return createClient(supabaseUrl, serviceKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -61,6 +73,12 @@ export function createLoginClient() {
   });
 }
 
-console.log(
-  '✅ Supabase Admin client initialized'
-);
+// Non-crashing startup check for logs/diagnostics
+try {
+  getSupabaseAdmin();
+} catch (error) {
+  console.warn(
+    '⚠️ [Startup] Supabase credentials not ready during module load:',
+    error instanceof Error ? error.message : String(error)
+  );
+}

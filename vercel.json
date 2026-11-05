@@ -3,7 +3,8 @@
   "services": {
     "backend-vite": {
       "root": "backend-vite",
-      "framework": "express"
+      "framework": "express",
+      "entrypoint": "src/server.ts"
     },
     "frontend-vite": {
       "root": "frontend-vite",

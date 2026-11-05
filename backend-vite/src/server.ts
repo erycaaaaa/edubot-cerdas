@@ -36,7 +36,11 @@ app.use(
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        (process.env.VERCEL_URL && origin === `https://${process.env.VERCEL_URL}`)
+      ) {
         return callback(null, true);
       }
 
@@ -137,33 +141,76 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Preserve a JSON contract for malformed input and denied origins; never expose stacks.
-app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  const candidate = error as { status?: number };
+// Preserve a JSON contract for malformed input and denied origins; never expose stacks to client.
+app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const candidate = error as { status?: number; name?: string; message?: string; stack?: string };
   const status = candidate?.status === 403 ? 403 : candidate?.status === 413 ? 413
     : candidate?.status === 400 ? 400 : 500;
-  res.status(status).json({ error: status === 403 ? 'Origin not allowed'
-    : status === 413 ? 'Request body too large' : status === 400 ? 'Invalid JSON body' : 'Internal server error' });
+
+  // Safe server-side logging: records error details without exposing secrets or credentials
+  console.error(`❌ [${req.method} ${req.originalUrl || req.url}] Server error:`, {
+    name: candidate?.name || (error instanceof Error ? error.name : 'UnknownError'),
+    message: candidate?.message || (error instanceof Error ? error.message : String(error)),
+    stack: candidate?.stack || (error instanceof Error ? error.stack : undefined),
+    path: req.originalUrl || req.url,
+  });
+
+  res.status(status).json({
+    error: status === 403 ? 'Origin not allowed'
+      : status === 413 ? 'Request body too large'
+      : status === 400 ? 'Invalid JSON body'
+      : 'Internal server error',
+    message: status === 500 ? 'Terjadi kesalahan pada server.' : undefined,
+  });
+});
+
+/* ============================================================
+   PROCESS-LEVEL ERROR LISTENERS
+   ============================================================ */
+
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('❌ Unhandled Rejection:', {
+    name: reason instanceof Error ? reason.name : 'UnhandledRejection',
+    message: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('❌ Uncaught Exception:', {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+  });
 });
 
 /* ============================================================
    START SERVER
    ============================================================ */
 
-if (require.main === module) app.listen(PORT, () => {
-  console.log(
-    `🚀 EduBot REST API running on http://localhost:${PORT}`
-  );
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-  console.log(
-    `📍 Allowed Origins: ${allowedOrigins.join(', ')}`
-  );
+if (require.main === module && !isServerless) {
+  app.listen(PORT, () => {
+    console.log(
+      `🚀 EduBot REST API running on http://localhost:${PORT}`
+    );
 
-  console.log(
-    '🛡️ Architecture: Pure REST + Supabase DB (No n8n, No Socket.io)'
-  );
+    console.log(
+      `📍 Allowed Origins: ${allowedOrigins.join(', ')}`
+    );
 
-  void checkGeneratorHealth();
-});
+    console.log(
+      '🛡️ Architecture: Pure REST + Supabase DB (No n8n, No Socket.io)'
+    );
 
+    void checkGeneratorHealth();
+  });
+}
+
+// Support both ES module and CommonJS default exports for serverless runners
 export default app;
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = app;
+  module.exports.default = app;
+}

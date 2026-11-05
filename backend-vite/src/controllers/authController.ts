@@ -123,7 +123,12 @@ export async function registerUser(
       },
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('❌ [POST /api/auth/register] Registration error:', {
+      name: error instanceof Error ? error.name : 'UnknownError',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      path: req.originalUrl || req.url,
+    });
     res.status(500).json({
       message: 'Terjadi kesalahan pada server.',
     });
@@ -211,7 +216,12 @@ export async function loginUser(
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ [POST /api/auth/login] Login error:', {
+      name: error instanceof Error ? error.name : 'UnknownError',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      path: req.originalUrl || req.url,
+    });
     res.status(500).json({
       message: 'Terjadi kesalahan pada server.',
     });
