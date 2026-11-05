@@ -7,14 +7,17 @@ dotenv.config();
 
 export function getSupabaseCredentials(): { supabaseUrl: string; serviceKey: string } {
   const supabaseUrl = process.env.SUPABASE_URL?.trim();
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const serviceKey = (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY
+  )?.trim();
 
   if (!supabaseUrl) {
     throw new Error('Missing SUPABASE_URL in environment');
   }
 
   if (!serviceKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY in environment');
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SERVICE_KEY) in environment');
   }
 
   if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {

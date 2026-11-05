@@ -4,7 +4,8 @@
     "backend-vite": {
       "root": "backend-vite",
       "framework": "express",
-      "entrypoint": "src/server.ts"
+      "buildCommand": "npm run build",
+      "entrypoint": "dist/server.js"
     },
     "frontend-vite": {
       "root": "frontend-vite",

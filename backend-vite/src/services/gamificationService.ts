@@ -1,8 +1,13 @@
 import { supabaseAdmin } from './supabaseService';
 
+const DEFAULT_GAMIFICATION_URL =
+  process.env.NODE_ENV === 'development'
+    ? 'http://127.0.0.1:8002'
+    : 'https://edubot-cerdas-production.up.railway.app';
+
 const GAMIFICATION_API_URL = (
   process.env.GAMIFICATION_API_URL?.trim() ||
-  'http://127.0.0.1:8002'
+  DEFAULT_GAMIFICATION_URL
 ).replace(/\/+$/, '');
 
 const GAMIFICATION_API_KEY =

@@ -10,8 +10,8 @@ describe('Vercel Serverless Function Invocation Tests', () => {
   before(async () => {
     // Simulate Vercel runtime environment
     process.env.VERCEL = '1';
-    
-    // Import compiled server.js (or TypeScript via ts-node)
+
+    // Import compiled server.js (as specified by entrypoint "dist/server.js")
     const serverModule = require('../dist/server.js');
     app = serverModule.default || serverModule;
 
@@ -41,6 +41,14 @@ describe('Vercel Serverless Function Invocation Tests', () => {
     assert.equal(body.status, 'ok');
   });
 
+  test('GET /api/health succeeds with 200 OK and returns running status', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/health`);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.status, 'OK');
+    assert.equal(body.architecture, 'REST + Supabase');
+  });
+
   test('POST /api/auth/login without body returns 400 JSON and does not crash', async () => {
     const res = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
       method: 'POST',
@@ -53,8 +61,10 @@ describe('Vercel Serverless Function Invocation Tests', () => {
   });
 
   test('POST /api/auth/login with missing Supabase env gracefully returns 500 JSON without process crash', async () => {
-    // Ensure SUPABASE_URL is unset
+    // Ensure both role key and legacy key are unset
     delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SERVICE_KEY;
 
     const res = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
       method: 'POST',
@@ -72,10 +82,11 @@ describe('Vercel Serverless Function Invocation Tests', () => {
     assert.equal(body.message, 'Terjadi kesalahan pada server.');
   });
 
-  test('POST /api/auth/login with configured Supabase credentials attempts auth and returns 401 for wrong credentials', async () => {
-    // Provide valid mock/live URL structure
+  test('POST /api/auth/login with SUPABASE_SERVICE_KEY fallback attempts auth and returns 401 for wrong credentials', async () => {
+    // Provide credentials using legacy SUPABASE_SERVICE_KEY name
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     process.env.SUPABASE_URL = 'https://dxfikfopmexufwapeguw.supabase.co';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_xwie7gttlKJnlp-rREJySQ_VmxZiIup';
+    process.env.SUPABASE_SERVICE_KEY = 'sb_secret_xwie7gttlKJnlp-rREJySQ_VmxZiIup';
 
     const res = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
       method: 'POST',
@@ -86,7 +97,7 @@ describe('Vercel Serverless Function Invocation Tests', () => {
       }),
     });
 
-    // Should reach Supabase and return 401 (invalid credentials), NOT 500
+    // Should recognize the key, reach Supabase and return 401 (invalid credentials), NOT 500
     assert.equal(res.status, 401);
     const body = await res.json();
     assert.ok(body.message.includes('Email atau password salah'));
