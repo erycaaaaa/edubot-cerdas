@@ -1,6 +1,6 @@
-# EduBuz
+# EduBot Cerdas
 
-EduBuz adalah aplikasi chat pembelajaran dengan moderasi input/output, strike siswa, pemantauan guru, reward XP, saldo EXP, dan koleksi avatar. Antarmuka juga memakai nama EduBot/Bingo dan materi PJOK.
+EduBot Cerdasadalah aplikasi chat pembelajaran dengan moderasi input/output, strike siswa, pemantauan guru, reward XP, saldo EXP, dan koleksi avatar. Antarmuka juga memakai nama EduBot/Bingo dan materi PJOK.
 
 Diperbarui 28 September 2026 berdasarkan kode lokal. Status implementasi dibedakan dari hasil pengujian dan penerapan di server.
 
