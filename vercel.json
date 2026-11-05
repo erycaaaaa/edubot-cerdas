@@ -25,6 +25,12 @@
   },
   "rewrites": [
     {
+      "source": "/health",
+      "destination": {
+        "service": "backend-vite"
+      }
+    },
+    {
       "source": "/api/(.*)",
       "destination": {
         "service": "backend-vite"
