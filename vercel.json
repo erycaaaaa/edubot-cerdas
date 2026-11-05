@@ -19,7 +19,8 @@
     },
     "reward-gamification-api": {
       "root": "reward-gamification-api",
-      "framework": "fastapi"
+      "framework": "fastapi",
+      "entrypoint": "reward_api:app"
     }
   },
   "rewrites": [
