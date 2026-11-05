@@ -370,9 +370,23 @@ export async function clearSession(): Promise<void> {
 // REGISTER
 // ============================================================
 
+const getApiBaseUrl = () => {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+
+  if (configured) {
+    return configured.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+
+  return 'http://localhost:5000';
+};
+
 export async function registerUser(userData: UserData & { password: string }): Promise<AuthResult> {
   try {
-    const response = await fetch(`${(import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')}/api/auth/register`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userData.email, name: userData.name, password: userData.password,
         role: userData.role, grade: userData.gradeNumber, avatar: userData.avatar }),
@@ -411,10 +425,7 @@ export async function authenticateUser(
   }
 
   try {
-    const API_URL =
-      import.meta.env
-        .VITE_API_URL ||
-      'http://localhost:5000';
+    const API_URL = getApiBaseUrl();
 
     console.log(
       '🔐 Login via backend:',

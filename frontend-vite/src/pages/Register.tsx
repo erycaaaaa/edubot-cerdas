@@ -79,9 +79,19 @@ const roleOptions = {
 
 type RegisterRole = keyof typeof roleOptions;
 
-const API_URL = (
-  import.meta.env.VITE_API_URL || 'http://localhost:5000'
-).replace(/\/+$/, '');
+const API_URL = (() => {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+
+  if (configured) {
+    return configured.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+
+  return 'http://localhost:5000';
+})();
 
 interface RegisterFormData {
   email: string;

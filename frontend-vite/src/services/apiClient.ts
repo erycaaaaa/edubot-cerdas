@@ -1,9 +1,21 @@
 import axios, { AxiosError } from 'axios';
 import { supabase } from '../lib/supabase';
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_URL || 'http://localhost:5000'
-).replace(/\/+$/, '');
+const getApiBaseUrl = () => {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+
+  if (configured) {
+    return configured.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+
+  return 'http://localhost:5000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

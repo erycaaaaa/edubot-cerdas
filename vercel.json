@@ -1,0 +1,39 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "backend-vite": {
+      "root": "backend-vite",
+      "framework": "express",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "reward-gamification-api",
+          "format": "url",
+          "env": "GAMIFICATION_API_URL"
+        }
+      ]
+    },
+    "frontend-vite": {
+      "root": "frontend-vite",
+      "framework": "vite"
+    },
+    "reward-gamification-api": {
+      "root": "reward-gamification-api",
+      "framework": "fastapi"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend-vite"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend-vite"
+      }
+    }
+  ]
+}
