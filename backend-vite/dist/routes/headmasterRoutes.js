@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
+const headmasterController_1 = require("../controllers/headmasterController");
+const router = (0, express_1.Router)();
+router.use(auth_1.requireAuth, (0, auth_1.requireRole)('headmaster'));
+router.get('/classes', headmasterController_1.getSchoolClasses);
+router.get('/students', headmasterController_1.getSchoolStudents);
+router.get('/teachers', headmasterController_1.getSchoolTeachers);
+router.get('/dashboard', headmasterController_1.getSchoolDashboard);
+router.get('/students/:studentId/chat-history', headmasterController_1.getSchoolStudentChatHistory);
+router.get('/students/:studentId/gamification', headmasterController_1.getSchoolStudentGamification);
+exports.default = router;

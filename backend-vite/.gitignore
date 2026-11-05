@@ -1,5 +1,6 @@
 node_modules
-dist
+# dist is tracked so Vercel can find entrypoint dist/server.js
+# dist
 
 .env
 .env.*

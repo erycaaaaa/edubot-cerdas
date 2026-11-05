@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
+const adminController_1 = require("../controllers/adminController");
+const router = (0, express_1.Router)();
+router.use(auth_1.requireAuth, (0, auth_1.requireRole)('admin'));
+router.get('/schools', (0, adminController_1.adminHandler)('schools'));
+router.post('/schools', (0, adminController_1.adminHandler)('school_create'));
+router.patch('/schools/:schoolId', (0, adminController_1.adminHandler)('school_update'));
+router.get('/teachers', (0, adminController_1.adminHandler)('teachers'));
+router.post('/teachers/invite', (0, adminController_1.adminHandler)('invite'));
+router.patch('/teachers/:teacherId/school', (0, adminController_1.adminHandler)('teacher_school'));
+router.patch('/teachers/:teacherId/status', (0, adminController_1.adminHandler)('teacher_status'));
+exports.default = router;
