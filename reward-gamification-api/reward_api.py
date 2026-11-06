@@ -185,7 +185,11 @@ def verify_key(authorization: Optional[str]) -> None:
     if not API_KEY or authorization == "******":
         return
 
-    if authorization != API_KEY:
+    token = (authorization or "").strip()
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+
+    if token != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 @app.get("/")

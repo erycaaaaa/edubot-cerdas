@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabaseAdmin } from '../services/supabaseService';
+import { getGamification } from '../services/gamificationService';
 
 export async function getSchoolClasses(req: Request, res: Response): Promise<void> {
   try {
@@ -137,6 +138,86 @@ export async function getSchoolDashboard(req: Request, res: Response): Promise<v
     });
   } catch (error: any) {
     console.error('Headmaster getSchoolDashboard error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+}
+
+export async function getSchoolStudentChatHistory(req: Request, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    const { studentId } = req.params;
+
+    if (!user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    if (user.role !== 'headmaster') {
+      res.status(403).json({ error: 'Akses hanya untuk kepala sekolah.' });
+      return;
+    }
+
+    const { data: targetStudent, error: lookupError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, school_id, role')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (lookupError || !targetStudent || targetStudent.school_id !== user.schoolId || targetStudent.role !== 'student') {
+      res.status(404).json({ error: 'Siswa tidak ditemukan di sekolah ini.' });
+      return;
+    }
+
+    const { data: history, error: historyError } = await supabaseAdmin
+      .from('chat_history')
+      .select('id, role, content, request_id, session_id, is_violation, created_at')
+      .eq('student_id', studentId)
+      .eq('school_id', user.schoolId)
+      .order('created_at', { ascending: true })
+      .limit(200);
+
+    if (historyError) {
+      res.status(500).json({ error: 'Failed to fetch student chat history', details: historyError.message });
+      return;
+    }
+
+    res.json({ success: true, data: history || [] });
+  } catch (error: any) {
+    console.error('Headmaster getSchoolStudentChatHistory error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+}
+
+export async function getSchoolStudentGamification(req: Request, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    const { studentId } = req.params;
+
+    if (!user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    if (user.role !== 'headmaster') {
+      res.status(403).json({ error: 'Akses hanya untuk kepala sekolah.' });
+      return;
+    }
+
+    const { data: targetStudent, error: lookupError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, school_id, role')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (lookupError || !targetStudent || targetStudent.school_id !== user.schoolId || targetStudent.role !== 'student') {
+      res.status(404).json({ error: 'Siswa tidak ditemukan di sekolah ini.' });
+      return;
+    }
+
+    const gamification = await getGamification(studentId);
+    res.json({ success: true, data: gamification });
+  } catch (error: any) {
+    console.error('Headmaster getSchoolStudentGamification error:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

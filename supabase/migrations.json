@@ -5,5 +5,8 @@
   "migrations/004_avatar_economy.sql",
   "migrations/005_profile_access.sql",
   "migrations/006_atomic_strikes.sql",
-  "migrations/007_admin_schools.sql"
+  "migrations/007_admin_schools.sql",
+  "migrations/008_admin_scope_cleanup.sql",
+  "migrations/009_classes_headmaster_rbac.sql",
+  "migrations/010_teacher_school_wide_access.sql"
 ]

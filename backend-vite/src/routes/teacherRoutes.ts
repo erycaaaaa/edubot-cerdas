@@ -7,6 +7,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   handleResetStudentStrikes,
+  getStudentChatHistory,
+  getStudentGamification,
 } from '../controllers/teacherController';
 
 const router = Router();
@@ -19,6 +21,12 @@ router.get('/classes', getClasses);
 
 // GET /api/teacher/students
 router.get('/students', getStudents);
+
+// GET /api/teacher/students/:studentId/chat-history
+router.get('/students/:studentId/chat-history', getStudentChatHistory);
+
+// GET /api/teacher/students/:studentId/gamification
+router.get('/students/:studentId/gamification', getStudentGamification);
 
 // GET /api/teacher/notifications
 router.get('/notifications', getNotifications);

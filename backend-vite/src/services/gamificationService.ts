@@ -1,12 +1,12 @@
 import { supabaseAdmin } from './supabaseService';
 
 const GAMIFICATION_API_URL = (
-  process.env.GAMIFICATION_API_URL ||
+  process.env.GAMIFICATION_API_URL?.trim() ||
   'http://127.0.0.1:8002'
 ).replace(/\/+$/, '');
 
 const GAMIFICATION_API_KEY =
-  process.env.GAMIFICATION_API_KEY || '';
+  process.env.GAMIFICATION_API_KEY?.trim() || '';
 
 const GAMIFICATION_TIMEOUT = Number(process.env.GAMIFICATION_TIMEOUT) || 10000;
 

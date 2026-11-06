@@ -1,36 +1,14 @@
 import { Request, Response } from 'express';
 import { supabaseAdmin } from '../services/supabaseService';
 import { resetStrikes, StrikeAccessError } from '../services/strikeService';
+import { getGamification } from '../services/gamificationService';
 
-async function getTeacherClassIds(teacherId: string, schoolId: string): Promise<string[]> {
-  const { data, error } = await supabaseAdmin
-    .from('classes')
-    .select('id')
-    .eq('teacher_id', teacherId)
-    .eq('school_id', schoolId);
-
-  if (error) throw error;
-  return (data ?? []).map((row: any) => row.id).filter(Boolean);
-}
-
-async function getTeacherStudentIds(teacherId: string, schoolId: string): Promise<string[]> {
-  const classIds = await getTeacherClassIds(teacherId, schoolId);
-  if (!classIds.length) return [];
-
-  const { data, error } = await supabaseAdmin
-    .from('class_students')
-    .select('student_id')
-    .in('class_id', classIds);
-
-  if (error) throw error;
-  return [...new Set((data ?? []).map((row: any) => row.student_id).filter(Boolean))];
-}
-
-async function ensureTeacherStudentAccess(teacherId: string, schoolId: string, studentId: string): Promise<boolean> {
-  const studentIds = await getTeacherStudentIds(teacherId, schoolId);
-  return studentIds.includes(studentId);
-}
-
+/**
+ * GET /api/teacher/classes
+ *
+ * Mengambil seluruh kelas di sekolah guru (school-wide),
+ * tidak dibatasi oleh penugasan wali kelas (teacher_id).
+ */
 export async function getClasses(req: Request, res: Response): Promise<void> {
   try {
     const user = req.user;
@@ -42,7 +20,6 @@ export async function getClasses(req: Request, res: Response): Promise<void> {
     const { data: classes, error } = await supabaseAdmin
       .from('classes')
       .select('id, name, grade, teacher_id, school_id, created_at, updated_at')
-      .eq('teacher_id', user.id)
       .eq('school_id', user.schoolId)
       .order('grade', { ascending: true })
       .order('name', { ascending: true });
@@ -59,6 +36,12 @@ export async function getClasses(req: Request, res: Response): Promise<void> {
   }
 }
 
+/**
+ * GET /api/teacher/students
+ *
+ * Mengambil seluruh siswa di sekolah guru (school-wide, Kelas 1–6),
+ * tanpa dibatasi oleh keanggotaan kelas atau penugasan guru.
+ */
 export async function getStudents(req: Request, res: Response): Promise<void> {
   try {
     const user = req.user;
@@ -67,35 +50,13 @@ export async function getStudents(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const teacherClassIds = await getTeacherClassIds(user.id, user.schoolId);
-    if (!teacherClassIds.length) {
-      res.json({ success: true, data: [] });
-      return;
-    }
-
-    const { data: classStudentRows, error: classStudentsError } = await supabaseAdmin
-      .from('class_students')
-      .select('student_id')
-      .in('class_id', teacherClassIds);
-
-    if (classStudentsError) {
-      res.status(500).json({ error: 'Failed to fetch teacher class memberships', details: classStudentsError.message });
-      return;
-    }
-
-    const studentIds = [...new Set((classStudentRows ?? []).map((row: any) => row.student_id).filter(Boolean))];
-    if (!studentIds.length) {
-      res.json({ success: true, data: [] });
-      return;
-    }
-
     const { data: students, error } = await supabaseAdmin
       .from('profiles')
       .select('id, name, email, role, school_id, grade, avatar, strike_count, is_blocked, updated_at')
       .eq('school_id', user.schoolId)
-      .in('id', studentIds)
       .eq('role', 'student')
-      .order('strike_count', { ascending: false });
+      .order('strike_count', { ascending: false })
+      .order('name', { ascending: true });
 
     if (error) {
       res.status(500).json({ error: 'Failed to fetch students', details: error.message });
@@ -109,6 +70,11 @@ export async function getStudents(req: Request, res: Response): Promise<void> {
   }
 }
 
+/**
+ * GET /api/teacher/notifications
+ *
+ * Mengambil notifikasi pelanggaran siswa di sekolah guru (school-wide).
+ */
 export async function getNotifications(req: Request, res: Response): Promise<void> {
   try {
     const user = req.user;
@@ -117,17 +83,10 @@ export async function getNotifications(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const studentIds = await getTeacherStudentIds(user.id, user.schoolId);
-    if (!studentIds.length) {
-      res.json({ success: true, data: [] });
-      return;
-    }
-
     const { data: notifications, error } = await supabaseAdmin
       .from('teacher_notifications')
       .select('id, violation_id, school_id, student_id, student_name, student_avatar, strike_level, type, title, description, is_read, created_at')
       .eq('school_id', user.schoolId)
-      .in('student_id', studentIds)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -143,6 +102,11 @@ export async function getNotifications(req: Request, res: Response): Promise<voi
   }
 }
 
+/**
+ * PATCH /api/teacher/notifications/:id/read
+ *
+ * Menandai notifikasi telah dibaca, divalidasi berdasarkan school_id.
+ */
 export async function markNotificationRead(req: Request, res: Response): Promise<void> {
   try {
     const user = req.user;
@@ -165,12 +129,6 @@ export async function markNotificationRead(req: Request, res: Response): Promise
       return;
     }
 
-    const allowed = await ensureTeacherStudentAccess(user.id, user.schoolId, notification.student_id);
-    if (!allowed) {
-      res.status(403).json({ error: 'Tidak berwenang mengakses notifikasi ini.' });
-      return;
-    }
-
     const { error } = await supabaseAdmin
       .from('teacher_notifications')
       .update({ is_read: true })
@@ -189,6 +147,11 @@ export async function markNotificationRead(req: Request, res: Response): Promise
   }
 }
 
+/**
+ * PATCH /api/teacher/notifications/read-all
+ *
+ * Menandai semua notifikasi di sekolah yang sama telah dibaca.
+ */
 export async function markAllNotificationsRead(req: Request, res: Response): Promise<void> {
   try {
     const user = req.user;
@@ -197,17 +160,10 @@ export async function markAllNotificationsRead(req: Request, res: Response): Pro
       return;
     }
 
-    const studentIds = await getTeacherStudentIds(user.id, user.schoolId);
-    if (!studentIds.length) {
-      res.json({ success: true, message: 'No notifications to mark as read' });
-      return;
-    }
-
     const { error } = await supabaseAdmin
       .from('teacher_notifications')
       .update({ is_read: true })
       .eq('school_id', user.schoolId)
-      .in('student_id', studentIds)
       .eq('is_read', false);
 
     if (error) {
@@ -222,11 +178,17 @@ export async function markAllNotificationsRead(req: Request, res: Response): Pro
   }
 }
 
+/**
+ * POST /api/teacher/students/:studentId/reset-strikes
+ *
+ * Mereset strike siswa. Siswa harus berada di sekolah yang sama dengan guru.
+ * Identitas guru diambil dari token terverifikasi (req.user.id), bukan body.
+ */
 export async function handleResetStudentStrikes(req: Request, res: Response): Promise<void> {
   try {
     const user = req.user;
     const { studentId } = req.params;
-    const { notes, teacherId: _ignoredTeacherId } = req.body ?? {};
+    const { notes } = req.body ?? {};
 
     if (!user) {
       res.status(401).json({ error: 'User not authenticated' });
@@ -240,7 +202,7 @@ export async function handleResetStudentStrikes(req: Request, res: Response): Pr
 
     const { data: targetStudent, error: studentLookupError } = await supabaseAdmin
       .from('profiles')
-      .select('id, school_id')
+      .select('id, school_id, role')
       .eq('id', studentId)
       .maybeSingle();
 
@@ -249,13 +211,7 @@ export async function handleResetStudentStrikes(req: Request, res: Response): Pr
       return;
     }
 
-    if (targetStudent.school_id !== user.schoolId) {
-      res.status(404).json({ error: 'Siswa tidak ditemukan di sekolah ini.' });
-      return;
-    }
-
-    const allowed = await ensureTeacherStudentAccess(user.id, user.schoolId, studentId);
-    if (!allowed) {
+    if (targetStudent.school_id !== user.schoolId || targetStudent.role !== 'student') {
       res.status(404).json({ error: 'Siswa tidak ditemukan di sekolah ini.' });
       return;
     }
@@ -269,8 +225,91 @@ export async function handleResetStudentStrikes(req: Request, res: Response): Pr
 
     res.json({ success: true, message: 'Student strikes reset successfully' });
   } catch (error: any) {
-    if (error instanceof StrikeAccessError) { res.status(error.status).json({ error: error.message }); return; }
+    if (error instanceof StrikeAccessError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
     console.error('Reset strikes error:', error);
     res.status(500).json({ error: 'Failed to reset strikes' });
+  }
+}
+
+/**
+ * GET /api/teacher/students/:studentId/chat-history
+ *
+ * Mengambil riwayat percakapan chatbot siswa di sekolah yang sama.
+ */
+export async function getStudentChatHistory(req: Request, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    const { studentId } = req.params;
+
+    if (!user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { data: targetStudent, error: lookupError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, school_id, role')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (lookupError || !targetStudent || targetStudent.school_id !== user.schoolId || targetStudent.role !== 'student') {
+      res.status(404).json({ error: 'Siswa tidak ditemukan di sekolah ini.' });
+      return;
+    }
+
+    const { data: history, error: historyError } = await supabaseAdmin
+      .from('chat_history')
+      .select('id, role, content, request_id, session_id, is_violation, created_at')
+      .eq('student_id', studentId)
+      .eq('school_id', user.schoolId)
+      .order('created_at', { ascending: true })
+      .limit(200);
+
+    if (historyError) {
+      res.status(500).json({ error: 'Failed to fetch student chat history', details: historyError.message });
+      return;
+    }
+
+    res.json({ success: true, data: history || [] });
+  } catch (error: any) {
+    console.error('Teacher getStudentChatHistory error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+}
+
+/**
+ * GET /api/teacher/students/:studentId/gamification
+ *
+ * Mengambil detail XP, level, dan progres gamifikasi siswa di sekolah yang sama.
+ */
+export async function getStudentGamification(req: Request, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    const { studentId } = req.params;
+
+    if (!user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { data: targetStudent, error: lookupError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, school_id, role')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (lookupError || !targetStudent || targetStudent.school_id !== user.schoolId || targetStudent.role !== 'student') {
+      res.status(404).json({ error: 'Siswa tidak ditemukan di sekolah ini.' });
+      return;
+    }
+
+    const gamification = await getGamification(studentId);
+    res.json({ success: true, data: gamification });
+  } catch (error: any) {
+    console.error('Teacher getStudentGamification error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

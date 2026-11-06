@@ -78,7 +78,7 @@ before(async () => {
     if (url.pathname === '/rest/v1/rpc/unlock_avatar') return send(400, { message: 'INSUFFICIENT_EXP', code: 'P0001' });
     if (url.pathname === '/rest/v1/rpc/equip_avatar') return send(400, { message: 'AVATAR_NOT_OWNED', code: 'P0001' });
     if (url.pathname === '/rest/v1/teacher_notifications') {
-      if (url.searchParams.get('school_id') === 'eq.school.test' && url.searchParams.get('student_id')?.includes('student-one')) {
+      if (url.searchParams.get('school_id') === 'eq.school.test') {
         return send(200, [{ id: 'notice-one', student_id: 'student-one', school_id: 'school.test', title: 'Reminder', description: 'Test', is_read: false }]);
       }
       return send(200, []);

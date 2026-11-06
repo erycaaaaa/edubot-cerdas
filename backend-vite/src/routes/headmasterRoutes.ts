@@ -5,6 +5,8 @@ import {
   getSchoolStudents,
   getSchoolTeachers,
   getSchoolDashboard,
+  getSchoolStudentChatHistory,
+  getSchoolStudentGamification,
 } from '../controllers/headmasterController';
 
 const router = Router();
@@ -14,5 +16,7 @@ router.get('/classes', getSchoolClasses);
 router.get('/students', getSchoolStudents);
 router.get('/teachers', getSchoolTeachers);
 router.get('/dashboard', getSchoolDashboard);
+router.get('/students/:studentId/chat-history', getSchoolStudentChatHistory);
+router.get('/students/:studentId/gamification', getSchoolStudentGamification);
 
 export default router;
