@@ -156,3 +156,4 @@ __pycache__/
 
 # Turbo Repo
 .turbo
+.vercel

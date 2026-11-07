@@ -1,15 +1,35 @@
 "use strict";
+/**
+ * EduBot REST API
+ * Express + TypeScript + Supabase
+ *
+ * Local development:
+ *   Loads environment variables from .env using dotenv.
+ *
+ * Production:
+ *   Uses environment variables provided by Vercel.
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('dotenv').config();
+// ============================================================
+// 1. ENVIRONMENT CONFIGURATION
+// ============================================================
+const isServerless = Boolean(process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME);
+if (!isServerless) {
+    try {
+        require('dotenv').config();
+        console.log('[ENV] Local .env loaded');
+    }
+    catch (error) {
+        console.warn('[ENV] dotenv unavailable; using system environment variables');
+    }
 }
-catch {
-    // dotenv is optional in production environments.
-}
+// ============================================================
+// 2. IMPORTS
+// ============================================================
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
@@ -19,34 +39,39 @@ const teacherRoutes_1 = __importDefault(require("./routes/teacherRoutes"));
 const headmasterRoutes_1 = __importDefault(require("./routes/headmasterRoutes"));
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const moderationService_1 = require("./services/moderationService");
+// ============================================================
+// 3. EXPRESS INITIALIZATION
+// ============================================================
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 5000;
-const allowedOrigins = (process.env.CORS_ORIGINS || [
-    'http://localhost:5175',
-    'http://127.0.0.1:5175',
-].join(','))
+// ============================================================
+// 4. CORS CONFIGURATION
+// ============================================================
+const allowedOrigins = (process.env.CORS_ORIGINS ||
+    [
+        'http://localhost:5175',
+        'http://127.0.0.1:5175',
+    ].join(','))
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
 app.disable('x-powered-by');
-// CORS configuration
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
+        // Allow requests without Origin header.
         if (!origin) {
             return callback(null, true);
         }
-        if (allowedOrigins.includes(origin) ||
+        const isAllowed = allowedOrigins.includes(origin) ||
             origin.endsWith('.vercel.app') ||
-            (process.env.VERCEL_URL &&
-                origin === `https://${process.env.VERCEL_URL}`)) {
+            (Boolean(process.env.VERCEL_URL) &&
+                origin === `https://${process.env.VERCEL_URL}`);
+        if (isAllowed) {
             return callback(null, true);
         }
-        console.error('[CORS] Request blocked:', {
-            origin,
-        });
-        return callback(Object.assign(new Error('Origin not allowed'), {
-            status: 403,
-        }));
+        console.warn('[CORS] Request blocked:', { origin });
+        const error = Object.assign(new Error('Origin not allowed'), { status: 403 });
+        return callback(error);
     },
     credentials: true,
     methods: [
@@ -65,9 +90,13 @@ app.use((0, cors_1.default)({
         'X-Requested-With',
     ],
 }));
-// Request body parser
-app.use(express_1.default.json());
-// Request and response logger
+// ============================================================
+// 5. BODY PARSER
+// ============================================================
+app.use(express_1.default.json({ limit: '1mb' }));
+// ============================================================
+// 6. REQUEST LOGGING
+// ============================================================
 app.use((req, res, next) => {
     const startTime = Date.now();
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -98,24 +127,40 @@ app.use((req, res, next) => {
     });
     next();
 });
-// Health check
+// ============================================================
+// 7. HEALTH CHECK
+// ============================================================
 app.get('/health', (_req, res) => {
-    res.json({
+    res.status(200).json({
         status: 'ok',
+        service: 'edubuz-backend',
+        timestamp: new Date().toISOString(),
     });
 });
-// API routes
+app.get('/api/health', (_req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        message: 'EduBot REST API is running',
+        architecture: 'REST + Supabase',
+        timestamp: new Date().toISOString(),
+    });
+});
+// ============================================================
+// 8. API ROUTES
+// ============================================================
 app.use('/api/auth', authRoutes_1.default);
 app.use('/api/chat', chatRoutes_1.default);
 app.use('/api/me', studentRoutes_1.default);
 app.use('/api/teacher', teacherRoutes_1.default);
 app.use('/api/headmaster', headmasterRoutes_1.default);
 app.use('/api/admin', adminRoutes_1.default);
-// Root route
+// ============================================================
+// 9. ROOT ROUTE
+// ============================================================
 app.get('/', (_req, res) => {
-    res.json({
+    res.status(200).json({
         message: 'Welcome to EduBot API (REST)',
-        status: 'Server is running successfully!',
+        status: 'Server is running successfully',
         version: '2.0.0',
         endpoints: {
             health: 'GET /health',
@@ -128,16 +173,9 @@ app.get('/', (_req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
-// API health
-app.get('/api/health', (_req, res) => {
-    res.json({
-        status: 'OK',
-        message: 'EduBot REST API is running!',
-        architecture: 'REST + Supabase',
-        timestamp: new Date().toISOString(),
-    });
-});
-// Not found handler
+// ============================================================
+// 10. NOT FOUND HANDLER
+// ============================================================
 app.use((req, res) => {
     console.warn('[NOT FOUND]', {
         requestId: res.locals.requestId,
@@ -149,23 +187,25 @@ app.use((req, res) => {
         message: `Cannot ${req.method} ${req.path}`,
     });
 });
-// Global error handler
-app.use((error, req, res, _next) => {
-    const candidate = error;
+// ============================================================
+// 11. GLOBAL ERROR HANDLER
+// ============================================================
+const errorHandler = (error, req, res, _next) => {
+    const candidate = error && typeof error === 'object'
+        ? error
+        : undefined;
     const status = candidate?.status === 403 ? 403 :
         candidate?.status === 413 ? 413 :
-            candidate?.status === 400 ? 400 : 500;
+            candidate?.status === 400 ? 400 :
+                500;
     console.error('[SERVER ERROR]', {
         requestId: res.locals.requestId,
         method: req.method,
         path: req.originalUrl,
         status,
-        name: candidate?.name ||
-            (error instanceof Error ? error.name : 'UnknownError'),
-        message: candidate?.message ||
-            (error instanceof Error ? error.message : String(error)),
-        stack: candidate?.stack ||
-            (error instanceof Error ? error.stack : undefined),
+        name: candidate?.name || 'UnknownError',
+        message: candidate?.message || String(error),
+        stack: candidate?.stack,
     });
     if (res.headersSent) {
         return;
@@ -179,8 +219,11 @@ app.use((error, req, res, _next) => {
             ? 'Terjadi kesalahan pada server.'
             : undefined,
     });
-});
-// Process-level error listeners
+};
+app.use(errorHandler);
+// ============================================================
+// 12. PROCESS ERROR LOGGING
+// ============================================================
 process.on('unhandledRejection', (reason) => {
     console.error('[UNHANDLED REJECTION]', {
         name: reason instanceof Error
@@ -201,9 +244,9 @@ process.on('uncaughtException', (error) => {
         stack: error.stack,
     });
 });
-// Server initialization
-const isServerless = Boolean(process.env.VERCEL ||
-    process.env.AWS_LAMBDA_FUNCTION_NAME);
+// ============================================================
+// 13. LOCAL SERVER START
+// ============================================================
 if (require.main === module && !isServerless) {
     app.listen(PORT, () => {
         console.log('[SERVER] EduBot REST API started');
@@ -211,11 +254,12 @@ if (require.main === module && !isServerless) {
         console.log('[SERVER] Port:', PORT);
         console.log('[SERVER] Allowed origins:', allowedOrigins);
         console.log('[SERVER] Architecture: REST + Supabase');
-        console.log('[SERVER] Request logging: enabled');
         void (0, moderationService_1.checkGeneratorHealth)();
     });
 }
-// Export Express application
+// ============================================================
+// 14. EXPORT EXPRESS APP FOR VERCEL
+// ============================================================
 exports.default = app;
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = app;

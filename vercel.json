@@ -1,3 +1,4 @@
+
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
@@ -5,7 +6,7 @@
       "root": "backend-vite",
       "framework": "express",
       "buildCommand": "npm run build",
-      "entrypoint": "server.js"
+      "entrypoint": "src/server.ts"
     },
     "frontend-vite": {
       "root": "frontend-vite",

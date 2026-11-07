@@ -1,17 +1,46 @@
 
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require('dotenv').config();
-} catch {
-  // dotenv is optional in production environments.
+/**
+ * EduBot REST API
+ * Express + TypeScript + Supabase
+ *
+ * Local development:
+ *   Loads environment variables from .env using dotenv.
+ *
+ * Production:
+ *   Uses environment variables provided by Vercel.
+ */
+
+// ============================================================
+// 1. ENVIRONMENT CONFIGURATION
+// ============================================================
+
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+);
+
+if (!isServerless) {
+  try {
+    require('dotenv').config();
+    console.log('[ENV] Local .env loaded');
+  } catch (error) {
+    console.warn(
+      '[ENV] dotenv unavailable; using system environment variables'
+    );
+  }
 }
 
+// ============================================================
+// 2. IMPORTS
+// ============================================================
+
 import express, {
-  Express,
-  Request,
-  Response,
-  NextFunction,
+  type Request,
+  type Response,
+  type NextFunction,
+  type ErrorRequestHandler,
 } from 'express';
+
 import cors from 'cors';
 
 import authRoutes from './routes/authRoutes';
@@ -23,47 +52,59 @@ import adminRoutes from './routes/adminRoutes';
 
 import { checkGeneratorHealth } from './services/moderationService';
 
-const app: Express = express();
+// ============================================================
+// 3. EXPRESS INITIALIZATION
+// ============================================================
+
+const app = express();
+
 const PORT = Number(process.env.PORT) || 5000;
 
-const allowedOrigins = (process.env.CORS_ORIGINS || [
-  'http://localhost:5175',
-  'http://127.0.0.1:5175',
-].join(','))
+// ============================================================
+// 4. CORS CONFIGURATION
+// ============================================================
+
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  [
+    'http://localhost:5175',
+    'http://127.0.0.1:5175',
+  ].join(',')
+)
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
 app.disable('x-powered-by');
 
-// CORS configuration
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests without Origin header.
       if (!origin) {
         return callback(null, true);
       }
 
-      if (
+      const isAllowed =
         allowedOrigins.includes(origin) ||
         origin.endsWith('.vercel.app') ||
         (
-          process.env.VERCEL_URL &&
+          Boolean(process.env.VERCEL_URL) &&
           origin === `https://${process.env.VERCEL_URL}`
-        )
-      ) {
+        );
+
+      if (isAllowed) {
         return callback(null, true);
       }
 
-      console.error('[CORS] Request blocked:', {
-        origin,
-      });
+      console.warn('[CORS] Request blocked:', { origin });
 
-      return callback(
-        Object.assign(new Error('Origin not allowed'), {
-          status: 403,
-        })
+      const error = Object.assign(
+        new Error('Origin not allowed'),
+        { status: 403 }
       );
+
+      return callback(error);
     },
 
     credentials: true,
@@ -87,58 +128,83 @@ app.use(
   })
 );
 
-// Request body parser
-app.use(express.json());
+// ============================================================
+// 5. BODY PARSER
+// ============================================================
 
-// Request and response logger
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const startTime = Date.now();
+app.use(express.json({ limit: '1mb' }));
 
-  const requestId =
-    `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+// ============================================================
+// 6. REQUEST LOGGING
+// ============================================================
 
-  res.locals.requestId = requestId;
+app.use(
+  (req: Request, res: Response, next: NextFunction) => {
+    const startTime = Date.now();
 
-  console.log('[REQUEST]', {
-    requestId,
-    timestamp: new Date().toISOString(),
-    method: req.method,
-    path: req.originalUrl,
-    origin: req.get('origin') || 'No Origin',
-    ip: req.ip,
-  });
+    const requestId =
+      `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-  res.on('finish', () => {
-    const duration = Date.now() - startTime;
+    res.locals.requestId = requestId;
 
-    const logMethod =
-      res.statusCode >= 500
-        ? console.error
-        : res.statusCode >= 400
-          ? console.warn
-          : console.log;
-
-    logMethod('[RESPONSE]', {
+    console.log('[REQUEST]', {
       requestId,
+      timestamp: new Date().toISOString(),
       method: req.method,
       path: req.originalUrl,
-      status: res.statusCode,
-      duration: `${duration}ms`,
-      timestamp: new Date().toISOString(),
+      origin: req.get('origin') || 'No Origin',
+      ip: req.ip,
     });
-  });
 
-  next();
-});
+    res.on('finish', () => {
+      const duration = Date.now() - startTime;
 
-// Health check
+      const logMethod =
+        res.statusCode >= 500
+          ? console.error
+          : res.statusCode >= 400
+            ? console.warn
+            : console.log;
+
+      logMethod('[RESPONSE]', {
+        requestId,
+        method: req.method,
+        path: req.originalUrl,
+        status: res.statusCode,
+        duration: `${duration}ms`,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    next();
+  }
+);
+
+// ============================================================
+// 7. HEALTH CHECK
+// ============================================================
+
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({
+  res.status(200).json({
     status: 'ok',
+    service: 'edubuz-backend',
+    timestamp: new Date().toISOString(),
   });
 });
 
-// API routes
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'EduBot REST API is running',
+    architecture: 'REST + Supabase',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ============================================================
+// 8. API ROUTES
+// ============================================================
+
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/me', studentRoutes);
@@ -146,11 +212,14 @@ app.use('/api/teacher', teacherRoutes);
 app.use('/api/headmaster', headmasterRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Root route
+// ============================================================
+// 9. ROOT ROUTE
+// ============================================================
+
 app.get('/', (_req: Request, res: Response) => {
-  res.json({
+  res.status(200).json({
     message: 'Welcome to EduBot API (REST)',
-    status: 'Server is running successfully!',
+    status: 'Server is running successfully',
     version: '2.0.0',
 
     endpoints: {
@@ -166,17 +235,10 @@ app.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// API health
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'OK',
-    message: 'EduBot REST API is running!',
-    architecture: 'REST + Supabase',
-    timestamp: new Date().toISOString(),
-  });
-});
+// ============================================================
+// 10. NOT FOUND HANDLER
+// ============================================================
 
-// Not found handler
 app.use((req: Request, res: Response) => {
   console.warn('[NOT FOUND]', {
     requestId: res.locals.requestId,
@@ -190,36 +252,40 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Global error handler
-app.use((
+// ============================================================
+// 11. GLOBAL ERROR HANDLER
+// ============================================================
+
+const errorHandler: ErrorRequestHandler = (
   error: unknown,
   req: Request,
   res: Response,
   _next: NextFunction
 ) => {
-  const candidate = error as {
-    status?: number;
-    name?: string;
-    message?: string;
-    stack?: string;
-  };
+  const candidate =
+    error && typeof error === 'object'
+      ? error as {
+          status?: number;
+          message?: string;
+          name?: string;
+          stack?: string;
+        }
+      : undefined;
 
   const status =
     candidate?.status === 403 ? 403 :
     candidate?.status === 413 ? 413 :
-    candidate?.status === 400 ? 400 : 500;
+    candidate?.status === 400 ? 400 :
+    500;
 
   console.error('[SERVER ERROR]', {
     requestId: res.locals.requestId,
     method: req.method,
     path: req.originalUrl,
     status,
-    name: candidate?.name ||
-      (error instanceof Error ? error.name : 'UnknownError'),
-    message: candidate?.message ||
-      (error instanceof Error ? error.message : String(error)),
-    stack: candidate?.stack ||
-      (error instanceof Error ? error.stack : undefined),
+    name: candidate?.name || 'UnknownError',
+    message: candidate?.message || String(error),
+    stack: candidate?.stack,
   });
 
   if (res.headersSent) {
@@ -233,26 +299,35 @@ app.use((
       status === 400 ? 'Invalid JSON body' :
       'Internal server error',
 
-    message: status === 500
-      ? 'Terjadi kesalahan pada server.'
-      : undefined,
+    message:
+      status === 500
+        ? 'Terjadi kesalahan pada server.'
+        : undefined,
   });
-});
+};
 
-// Process-level error listeners
+app.use(errorHandler);
+
+// ============================================================
+// 12. PROCESS ERROR LOGGING
+// ============================================================
+
 process.on('unhandledRejection', (reason: unknown) => {
   console.error('[UNHANDLED REJECTION]', {
-    name: reason instanceof Error
-      ? reason.name
-      : 'UnhandledRejection',
+    name:
+      reason instanceof Error
+        ? reason.name
+        : 'UnhandledRejection',
 
-    message: reason instanceof Error
-      ? reason.message
-      : String(reason),
+    message:
+      reason instanceof Error
+        ? reason.message
+        : String(reason),
 
-    stack: reason instanceof Error
-      ? reason.stack
-      : undefined,
+    stack:
+      reason instanceof Error
+        ? reason.stack
+        : undefined,
   });
 });
 
@@ -264,11 +339,9 @@ process.on('uncaughtException', (error: Error) => {
   });
 });
 
-// Server initialization
-const isServerless = Boolean(
-  process.env.VERCEL ||
-  process.env.AWS_LAMBDA_FUNCTION_NAME
-);
+// ============================================================
+// 13. LOCAL SERVER START
+// ============================================================
 
 if (require.main === module && !isServerless) {
   app.listen(PORT, () => {
@@ -277,13 +350,15 @@ if (require.main === module && !isServerless) {
     console.log('[SERVER] Port:', PORT);
     console.log('[SERVER] Allowed origins:', allowedOrigins);
     console.log('[SERVER] Architecture: REST + Supabase');
-    console.log('[SERVER] Request logging: enabled');
 
     void checkGeneratorHealth();
   });
 }
 
-// Export Express application
+// ============================================================
+// 14. EXPORT EXPRESS APP FOR VERCEL
+// ============================================================
+
 export default app;
 
 if (typeof module !== 'undefined' && module.exports) {
