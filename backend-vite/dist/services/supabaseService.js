@@ -1,15 +1,18 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.supabaseAdmin = void 0;
 exports.getSupabaseCredentials = getSupabaseCredentials;
 exports.getSupabaseAdmin = getSupabaseAdmin;
 exports.createLoginClient = createLoginClient;
-const dotenv_1 = __importDefault(require("dotenv"));
 const supabase_js_1 = require("@supabase/supabase-js");
-dotenv_1.default.config();
+try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('dotenv').config();
+}
+catch {
+    // In serverless / production environments (such as Vercel), environment variables
+    // are provided directly by the platform runtime and dotenv is optional.
+}
 // ENV & VALIDATION HELPERS
 function getSupabaseCredentials() {
     const supabaseUrl = process.env.SUPABASE_URL?.trim();

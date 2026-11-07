@@ -3,8 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('dotenv').config();
+}
+catch {
+    // In serverless / production environments (such as Vercel), environment variables
+    // are provided directly by the platform runtime and dotenv is optional.
+}
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));

@@ -1,7 +1,12 @@
-import dotenv from 'dotenv';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-dotenv.config();
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('dotenv').config();
+} catch {
+  // In serverless / production environments (such as Vercel), environment variables
+  // are provided directly by the platform runtime and dotenv is optional.
+}
 
 // ENV & VALIDATION HELPERS
 

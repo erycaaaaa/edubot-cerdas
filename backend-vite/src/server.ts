@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 
 dotenv.config();
+  // In serverless / production environments (such as Vercel), environment variables
 
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
