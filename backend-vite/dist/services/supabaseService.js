@@ -10,73 +10,101 @@ try {
     require('dotenv').config();
 }
 catch {
-    // In serverless / production environments (such as Vercel), environment variables
-    // are provided directly by the platform runtime and dotenv is optional.
+    // Environment variables are provided by the deployment platform.
 }
-// ENV & VALIDATION HELPERS
-function getSupabaseCredentials() {
-    const supabaseUrl = process.env.SUPABASE_URL?.trim();
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ||
-        process.env.SUPABASE_SERVICE_KEY)?.trim();
-    if (!supabaseUrl) {
-        throw new Error('Missing SUPABASE_URL in environment');
+function getRequiredEnv(name) {
+    const value = process.env[name]?.trim();
+    if (!value) {
+        throw new Error(`Missing ${name} in environment variables`);
     }
-    if (!serviceKey) {
-        throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SERVICE_KEY) in environment');
-    }
-    if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+    return value;
+}
+function getSupabaseUrl() {
+    const url = getRequiredEnv('SUPABASE_URL');
+    if (!/^https?:\/\//i.test(url)) {
         throw new Error('SUPABASE_URL must begin with http:// or https://');
     }
-    return { supabaseUrl, serviceKey };
+    return url.replace(/\/+$/, '');
 }
-// SUPABASE ADMIN CLIENT (LAZY INITIALIZATION)
-let _adminClient = null;
-function getSupabaseAdmin() {
-    if (!_adminClient) {
-        const { supabaseUrl, serviceKey } = getSupabaseCredentials();
-        _adminClient = (0, supabase_js_1.createClient)(supabaseUrl, serviceKey, {
-            auth: {
-                persistSession: false,
-                autoRefreshToken: false,
-                detectSessionInUrl: false,
-            },
-        });
-        console.log('✅ Supabase Admin client initialized');
+function getSupabaseCredentials() {
+    const supabaseUrl = getSupabaseUrl();
+    // Support both modern secret keys and legacy service role keys.
+    const serviceKey = process.env.SUPABASE_SECRET_KEY?.trim() ||
+        process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+        process.env.SUPABASE_SERVICE_KEY?.trim();
+    if (!serviceKey) {
+        throw new Error('Missing SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY');
     }
-    return _adminClient;
+    return {
+        supabaseUrl,
+        serviceKey,
+    };
 }
-/**
- * Proxied Supabase Admin client.
- *
- * Defers credential validation until first access.
- * This prevents unhandled top-level crashes during serverless module evaluation
- * (avoiding Vercel FUNCTION_INVOCATION_FAILED) while preserving the exact same API.
- */
+function getPublishableKey() {
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() ||
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+        process.env.VITE_SUPABASE_ANON_KEY?.trim();
+    if (!key) {
+        throw new Error('Missing Supabase publishable key');
+    }
+    return key;
+}
+const authOptions = {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+    },
+};
+let adminClient = null;
+function getSupabaseAdmin() {
+    if (!adminClient) {
+        const { supabaseUrl, serviceKey } = getSupabaseCredentials();
+        adminClient = (0, supabase_js_1.createClient)(supabaseUrl, serviceKey, authOptions);
+        console.log('[SUPABASE] Admin client initialized');
+    }
+    return adminClient;
+}
 exports.supabaseAdmin = new Proxy({}, {
-    get(_target, prop, receiver) {
+    get(_target, prop) {
         const client = getSupabaseAdmin();
-        const value = Reflect.get(client, prop, receiver);
-        if (typeof value === 'function') {
-            return value.bind(client);
-        }
-        return value;
+        const value = Reflect.get(client, prop, client);
+        return typeof value === 'function'
+            ? value.bind(client)
+            : value;
     },
 });
-/** Isolate password-login sessions from the shared privileged DB client. */
 function createLoginClient() {
+    const supabaseUrl = getSupabaseUrl();
+    const publishableKey = getPublishableKey();
+    return (0, supabase_js_1.createClient)(supabaseUrl, publishableKey, authOptions);
+}
+// Validate configuration without exposing credentials.
+try {
     const { supabaseUrl, serviceKey } = getSupabaseCredentials();
-    return (0, supabase_js_1.createClient)(supabaseUrl, serviceKey, {
-        auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-            detectSessionInUrl: false,
-        },
+    getSupabaseAdmin();
+    console.log('[SUPABASE CONFIG]', {
+        projectConfigured: Boolean(supabaseUrl),
+        adminKeyConfigured: Boolean(serviceKey),
+        adminKeyType: serviceKey.startsWith('sb_secret_')
+            ? 'secret'
+            : 'legacy-or-other',
     });
 }
-// Non-crashing startup check for logs/diagnostics
+catch (error) {
+    console.error('[SUPABASE] Admin initialization failed:', error instanceof Error ? error.message : String(error));
+}
 try {
-    getSupabaseAdmin();
+    const publishableKey = getPublishableKey();
+    console.log('[SUPABASE CONFIG]', {
+        loginKeyConfigured: Boolean(publishableKey),
+        loginKeyType: publishableKey.startsWith('sb_publishable_')
+            ? 'publishable'
+            : 'legacy-anon',
+    });
 }
 catch (error) {
-    console.warn('⚠️ [Startup] Supabase credentials not ready during module load:', error instanceof Error ? error.message : String(error));
+    console.error('[SUPABASE] Login configuration failed:', error instanceof Error ? error.message : String(error));
 }
