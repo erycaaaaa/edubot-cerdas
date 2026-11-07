@@ -5,7 +5,7 @@
       "root": "backend-vite",
       "framework": "express",
       "buildCommand": "npm run build",
-      "entrypoint": "index.js"
+      "entrypoint": "server.js"
     },
     "frontend-vite": {
       "root": "frontend-vite",

@@ -11,12 +11,17 @@ describe('Vercel Serverless Function Invocation Tests', () => {
     // Simulate Vercel runtime environment
     process.env.VERCEL = '1';
 
-    // Import root entrypoint (as specified by Vercel entrypoint "index.js")
-    const serverModule = require('../index.js');
+    // Import root entrypoint (server.js and index.js shim)
+    const serverModule = require('../server.js');
     app = serverModule.default || serverModule;
 
     // Verify app is a callable express application / request handler
     assert.equal(typeof app, 'function', 'App export must be a function/request handler');
+
+    // Also verify index.js compatibility shim
+    const indexModule = require('../index.js');
+    const indexApp = indexModule.default || indexModule;
+    assert.equal(typeof indexApp, 'function', 'Index shim export must be a function/request handler');
 
     // Also verify dist/server.js directly
     const distModule = require('../dist/server.js');
