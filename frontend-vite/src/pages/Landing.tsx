@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { AccountMenu } from '../components/AccountMenu';
 import { useTheme } from '../hooks/useTheme';
@@ -5,7 +6,18 @@ import { useHomeAccount } from '../hooks/useHomeAccount';
 import { AnimatedBlobs } from '../components/AnimatedBlobs';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
-import { Shield, Star, Users, TrendingUp, MessageCircle, Award, Heart, Sun, Moon, BookOpen } from 'lucide-react';
+import {
+  Shield,
+  Star,
+  Users,
+  TrendingUp,
+  MessageCircle,
+  Award,
+  Heart,
+  Sun,
+  Moon,
+  BookOpen
+} from 'lucide-react';
 
 import { BingoLogo } from '../components/BingoLogo';
 
@@ -20,19 +32,22 @@ export default function Landing() {
       Icon: MessageCircle,
       color: 'bg-[#B9895F]/15 text-[#B9895F]',
       title: 'Chat Interaktif',
-      description: 'Ngobrol dengan AI yang ramah dan selalu siap menjawab pertanyaan belajar'
+      description:
+        'Ngobrol dengan AI yang ramah dan selalu siap menjawab pertanyaan belajar'
     },
     {
       Icon: Shield,
       color: 'bg-[#776938]/15 text-[#776938]',
       title: 'Aman & Sopan',
-      description: 'Sistem pengawasan otomatis untuk menjaga percakapan tetap positif dan edukatif'
+      description:
+        'Sistem pengawasan otomatis untuk menjaga percakapan tetap positif dan edukatif'
     },
     {
       Icon: TrendingUp,
       color: 'bg-[#B9895F]/15 text-[#B9895F]',
       title: 'Pantau Progres',
-      description: 'Guru dan orang tua bisa memantau perkembangan belajar anak secara real-time'
+      description:
+        'Guru dan orang tua bisa memantau perkembangan belajar anak secara real-time'
     }
   ];
 
@@ -73,19 +88,24 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
 
           {/* Logo */}
-          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/')}>
+          <div
+            className="flex items-center gap-3 group cursor-pointer shrink-0"
+            onClick={() => navigate('/')}
+          >
             <div className="transition-transform duration-300 group-hover:scale-110">
               <BingoLogo size={48} interactive={false} />
             </div>
+
             <span className="text-2xl font-bold tracking-tight text-[#332F2D]">
               Edu<span className="text-[#B9895F]">Bot</span>
             </span>
           </div>
 
-          <AccountMenu />
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-10">
-            <div className="flex gap-8">
+          <div className="hidden md:flex items-center gap-8">
+
+            {/* Navigation Links */}
+            <div className="flex items-center gap-8">
               {['Home', 'About', 'How It Works'].map((item) => (
                 <a
                   key={item}
@@ -97,53 +117,89 @@ export default function Landing() {
               ))}
             </div>
 
+            {/* Right Actions */}
+            <div className="flex items-center gap-3 ml-4">
+
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={toggleDarkMode}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-[#FDF6EE] hover:bg-[#F3E8DB] transition-colors border border-[#BDB2A0]/30 shrink-0"
+                aria-label={darkMode ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'}
+                aria-pressed={darkMode}
+              >
+                {darkMode ? (
+                  <Sun className="w-5 h-5 text-[#B9895F]" />
+                ) : (
+                  <Moon className="w-5 h-5 text-[#5D594C]" />
+                )}
+              </button>
+
+              {/* Account Menu + Greeting */}
+              <div className="flex items-center gap-2 shrink-0">
+
+                {/* Hamburger / Account Menu */}
+                <AccountMenu />
+
+                {/* Greeting Button */}
+                <button
+                  disabled={checking}
+                  onClick={() => navigate(destination)}
+                  className="px-7 py-2.5 bg-[#B9895F] hover:bg-[#A67950] text-white rounded-full font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
+                >
+                  {checking
+                    ? 'Memuat akun...'
+                    : account
+                      ? `Halo, ${account.name}`
+                      : 'Login'}
+                </button>
+
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Menu */}
+          <div className="md:hidden flex items-center gap-2">
+
+            {/* Account Menu */}
+            <AccountMenu />
+
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-[#FDF6EE] hover:bg-[#F3E8DB] transition-colors border border-[#BDB2A0]/30"
-              aria-label={darkMode ? "Aktifkan tema terang" : "Aktifkan tema gelap"} aria-pressed={darkMode}
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-[#FDF6EE] border border-[#BDB2A0]/30 transition-colors shrink-0"
+              aria-label={darkMode ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'}
+              aria-pressed={darkMode}
             >
-              {darkMode
-                ? <Sun className="w-5 h-5 text-[#B9895F]" />
-                : <Moon className="w-5 h-5 text-[#5D594C]" />
-              }
+              {darkMode ? (
+                <Sun className="w-4 h-4 text-[#B9895F]" />
+              ) : (
+                <Moon className="w-4 h-4 text-[#5D594C]" />
+              )}
             </button>
 
+            {/* Greeting Button */}
             <button
               disabled={checking}
               onClick={() => navigate(destination)}
-              className="px-7 py-2.5 bg-[#B9895F] hover:bg-[#A67950] text-white rounded-full font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all"
+              className="px-4 py-2 bg-[#B9895F] hover:bg-[#A67950] text-white rounded-full font-bold shadow-sm whitespace-nowrap text-sm"
             >
-              {checking ? 'Memuat akun...' : account ? `Halo, ${account.name}` : 'Login'}
+              {checking
+                ? 'Memuat...'
+                : account
+                  ? `Halo, ${account.name}`
+                  : 'Login'}
             </button>
-          </div>
 
-          {/* Mobile */}
-          <div className="md:hidden flex items-center gap-3">
-            <button
-              onClick={toggleDarkMode}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-[#FDF6EE] border border-[#BDB2A0]/30 transition-colors"
-              aria-label={darkMode ? "Aktifkan tema terang" : "Aktifkan tema gelap"} aria-pressed={darkMode}
-            >
-              {darkMode
-                ? <Sun className="w-4 h-4 text-[#B9895F]" />
-                : <Moon className="w-4 h-4 text-[#5D594C]" />
-              }
-            </button>
-            <button
-              disabled={checking}
-              onClick={() => navigate(destination)}
-              className="px-4 py-2 bg-[#B9895F] hover:bg-[#A67950] text-white rounded-full font-bold shadow-sm"
-            >
-              {checking ? 'Memuat akun...' : account ? `Halo, ${account.name}` : 'Login'}
-            </button>
           </div>
 
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section id="home" className="max-w-7xl mx-auto px-6 py-16 md:py-24 relative z-10">
+      <section
+        id="home"
+        className="max-w-7xl mx-auto px-6 py-16 md:py-24 relative z-10"
+      >
         <div className="grid md:grid-cols-2 gap-12 items-center">
 
           {/* Left Content */}
@@ -158,7 +214,9 @@ export default function Landing() {
               transition={{ delay: 0.2 }}
               className="inline-block px-4 py-2 bg-[#B9895F]/15 border border-[#B9895F]/20 rounded-full mb-6"
             >
-              <span className="text-[#B9895F] font-semibold text-sm">✨ AI Learning Companion</span>
+              <span className="text-[#B9895F] font-semibold text-sm">
+                ✨ AI Learning Companion
+              </span>
             </motion.div>
 
             <h1 className="text-5xl md:text-6xl font-bold text-[#332F2D] mb-6 leading-tight">
@@ -174,17 +232,21 @@ export default function Landing() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 disabled={checking}
-              onClick={() => navigate(destination)}
+                onClick={() => navigate(destination)}
                 className="px-8 py-4 bg-[#B9895F] hover:bg-[#A67950] text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
               >
-                {account ? (account.role === 'student' ? 'Lanjut Belajar' : 'Buka Dashboard') : 'Mulai Belajar'}
+                {account
+                  ? account.role === 'student'
+                    ? 'Lanjut Belajar'
+                    : 'Buka Dashboard'
+                  : 'Mulai Belajar'}
               </motion.button>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 disabled={checking}
-              onClick={() => navigate(destination)}
+                onClick={() => navigate(destination)}
                 className="px-8 py-4 bg-white border-2 border-[#B9895F] text-[#B9895F] rounded-2xl font-semibold text-lg shadow-md hover:shadow-lg transition-all hover:bg-[#FDF6EE]"
               >
                 {account ? 'Kembali ke akun saya' : 'Untuk Guru & Orang Tua'}
@@ -195,15 +257,23 @@ export default function Landing() {
             <div className="flex flex-wrap gap-6 mt-12">
               <div className="flex items-center gap-2">
                 <Shield className="w-5 h-5 text-[#776938]" />
-                <span className="text-sm text-[#5D594C] font-medium">100% Aman</span>
+                <span className="text-sm text-[#5D594C] font-medium">
+                  100% Aman
+                </span>
               </div>
+
               <div className="flex items-center gap-2">
                 <Star className="w-5 h-5 text-[#B9895F]" />
-                <span className="text-sm text-[#5D594C] font-medium">Ramah Anak</span>
+                <span className="text-sm text-[#5D594C] font-medium">
+                  Ramah Anak
+                </span>
               </div>
+
               <div className="flex items-center gap-2">
                 <Heart className="w-5 h-5 text-[#776938]" />
-                <span className="text-sm text-[#5D594C] font-medium">Belajar dengan Hati</span>
+                <span className="text-sm text-[#5D594C] font-medium">
+                  Belajar dengan Hati
+                </span>
               </div>
             </div>
           </motion.div>
@@ -220,34 +290,36 @@ export default function Landing() {
               transition={{
                 duration: 3,
                 repeat: Infinity,
-                ease: 'easeInOut',
+                ease: 'easeInOut'
               }}
               className="relative z-10"
             >
               <div className="flex justify-center items-center">
                 <div className="relative group flex flex-col items-center">
+
                   {/* Tooltip */}
                   <div
                     className="
-                    absolute -top-12 left-1/2 -translate-x-1/2
-                    scale-0 group-hover:scale-100 group-focus-within:scale-100
-                    transition-all duration-300
-                    bg-[#332F2D] text-white text-xs font-semibold
-                    px-4 py-2 rounded-lg shadow-xl whitespace-nowrap
-                    pointer-events-none z-20
-                    after:content-[''] after:absolute after:top-full
-                    after:left-1/2 after:-translate-x-1/2
-                    after:border-8 after:border-x-transparent
-                    after:border-b-transparent after:border-t-[#332F2D]
-                  "
+                      absolute -top-12 left-1/2 -translate-x-1/2
+                      scale-0 group-hover:scale-100 group-focus-within:scale-100
+                      transition-all duration-300
+                      bg-[#332F2D] text-white text-xs font-semibold
+                      px-4 py-2 rounded-lg shadow-xl whitespace-nowrap
+                      pointer-events-none z-20
+                      after:content-[''] after:absolute after:top-full
+                      after:left-1/2 after:-translate-x-1/2
+                      after:border-8 after:border-x-transparent
+                      after:border-b-transparent after:border-t-[#332F2D]
+                    "
                   >
                     Ayo mulai belajar! 🚀
                   </div>
 
-                  {/* SVG  */}
+                  {/* SVG Mascot */}
                   <div className="w-[280px] h-[280px] md:w-[200px] md:h-[200px]">
                     <BingoLogo size="100%" interactive />
                   </div>
+
                 </div>
               </div>
             </motion.div>
@@ -255,7 +327,11 @@ export default function Landing() {
             {/* Floating Elements */}
             <motion.div
               animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: 'easeInOut'
+              }}
               className="absolute top-10 right-10 w-16 h-16 bg-white border border-[#BDB2A0]/30 rounded-2xl flex items-center justify-center text-3xl shadow-lg"
             >
               📚
@@ -263,7 +339,12 @@ export default function Landing() {
 
             <motion.div
               animate={{ y: [0, -10, 0], rotate: [0, -5, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: 0.5
+              }}
               className="absolute bottom-20 left-10 w-16 h-16 bg-white border border-[#BDB2A0]/30 rounded-2xl flex items-center justify-center text-3xl shadow-lg"
             >
               ⭐
@@ -271,19 +352,28 @@ export default function Landing() {
 
             <motion.div
               animate={{ y: [0, -12, 0] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              transition={{
+                duration: 2.8,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: 1
+              }}
               className="absolute top-1/2 left-0 w-12 h-12 bg-white border border-[#BDB2A0]/30 rounded-full flex items-center justify-center text-2xl shadow-lg"
             >
               🎨
             </motion.div>
-          </motion.div>
 
+          </motion.div>
         </div>
       </section>
 
       {/* About Section */}
-      <section id="about" className="bg-white py-20 relative z-10 border-y border-[#BDB2A0]/20 transition-colors duration-300">
+      <section
+        id="about"
+        className="bg-white py-20 relative z-10 border-y border-[#BDB2A0]/20 transition-colors duration-300"
+      >
         <div className="max-w-7xl mx-auto px-6">
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -294,6 +384,7 @@ export default function Landing() {
             <h2 className="text-4xl md:text-5xl font-bold text-[#332F2D] mb-4">
               Kenapa Memilih EduBot? 🤔
             </h2>
+
             <p className="text-xl text-[#5D594C] max-w-2xl mx-auto">
               Platform pembelajaran yang dirancang khusus untuk anak-anak dengan pengawasan penuh untuk guru dan orang tua
             </p>
@@ -313,8 +404,14 @@ export default function Landing() {
                 <div className={`${feature.color} w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm`}>
                   <feature.Icon className="w-10 h-10" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#332F2D] mb-3">{feature.title}</h3>
-                <p className="text-[#5D594C] leading-relaxed">{feature.description}</p>
+
+                <h3 className="text-2xl font-bold text-[#332F2D] mb-3">
+                  {feature.title}
+                </h3>
+
+                <p className="text-[#5D594C] leading-relaxed">
+                  {feature.description}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -350,16 +447,12 @@ export default function Landing() {
             {/* Connector */}
             <div
               className="
-              hidden md:block
-              absolute
-              top-8
-              left-[16.67%]
-              right-[16.67%]
-              h-10
-              bg-[#BDB2A0]/35
-              rounded-full
-              z-0
-            "
+                hidden md:block
+                absolute top-8
+                left-[16.67%] right-[16.67%]
+                h-10 bg-[#BDB2A0]/35
+                rounded-full z-0
+              "
             />
 
             {steps.map((step, index) => (
@@ -379,23 +472,12 @@ export default function Landing() {
                     {/* Number */}
                     <div
                       className={`
-                        absolute
-                        -top-2
-                        -left-2
-                        w-10
-                        h-10
-                        bg-white
-                        border
-                        border-[#BDB2A0]/30
-                        rounded-full
-                        flex
-                        items-center
-                        justify-center
-                        text-lg
-                        font-bold
-                        ${step.textColor}
-                        shadow-md
-                        z-20
+                        absolute -top-2 -left-2
+                        w-10 h-10 bg-white
+                        border border-[#BDB2A0]/30
+                        rounded-full flex items-center justify-center
+                        text-lg font-bold ${step.textColor}
+                        shadow-md z-20
                       `}
                     >
                       {step.step}
@@ -405,16 +487,9 @@ export default function Landing() {
                     <div
                       className={`
                         ${step.color}
-                        w-24
-                        h-24
-                        rounded-full
-                        flex
-                        items-center
-                        justify-center
-                        shadow-lg
-                        text-white
-                        relative
-                        z-10
+                        w-24 h-24 rounded-full
+                        flex items-center justify-center
+                        shadow-lg text-white relative z-10
                       `}
                     >
                       <step.Icon className="w-10 h-10" />
@@ -422,12 +497,10 @@ export default function Landing() {
 
                   </div>
 
-                  {/* Title */}
                   <h3 className="text-2xl font-bold text-[#332F2D] mb-3">
                     {step.title}
                   </h3>
 
-                  {/* Description */}
                   <p className="text-[#5D594C] max-w-xs mx-auto">
                     {step.description}
                   </p>
@@ -451,17 +524,11 @@ export default function Landing() {
               disabled={checking}
               onClick={() => navigate(destination)}
               className="
-                px-10
-                py-5
-                bg-[#B9895F]
-                hover:bg-[#A67950]
-                text-white
-                rounded-2xl
-                font-bold
-                text-xl
-                shadow-lg
-                hover:shadow-xl
-                transition-all
+                px-10 py-5
+                bg-[#B9895F] hover:bg-[#A67950]
+                text-white rounded-2xl
+                font-bold text-xl shadow-lg
+                hover:shadow-xl transition-all
               "
             >
               Yuk, Mulai Sekarang!
@@ -474,16 +541,23 @@ export default function Landing() {
       {/* Footer */}
       <footer className="bg-white py-12 relative z-10 border-t border-[#BDB2A0]/30 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 text-center">
+
           <div className="flex items-center justify-center gap-2 mb-4">
             <BingoLogo size={80} interactive={false} />
+
             <span className="text-2xl font-bold text-[#332F2D]">
               Edu<span className="text-[#B9895F]">Bot</span>
             </span>
           </div>
-          <p className="text-sm text-[#5D594C]">© 2026 EduBot. Semua hak dilindungi.</p>
+
+          <p className="text-sm text-[#5D594C]">
+            © 2026 EduBot. Semua hak dilindungi.
+          </p>
+
         </div>
       </footer>
 
+      {/* Help Button Animation */}
       <style>{`
         @keyframes helpPopIn {
           0% {
@@ -508,12 +582,15 @@ export default function Landing() {
         }
       `}</style>
 
+      {/* Floating Help Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <div className="relative">
+
           <button
             type="button"
             onClick={() => setShowHelp((prev) => !prev)}
             aria-label="Bantuan"
+            aria-expanded={showHelp}
             className="group flex h-14 w-14 items-center justify-center rounded-full border border-[#B9895F]/20 bg-[#B9895F] text-white shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
           >
             <svg
@@ -534,17 +611,27 @@ export default function Landing() {
           <div
             key={showHelp ? 'help-open' : 'help-closed'}
             style={{
-              animation: showHelp ? 'helpPopIn 0.25s ease-out forwards' : 'helpPopOut 0.2s ease-in forwards',
+              animation: showHelp
+                ? 'helpPopIn 0.25s ease-out forwards'
+                : 'helpPopOut 0.2s ease-in forwards',
               opacity: showHelp ? 1 : 0,
               visibility: showHelp ? 'visible' : 'hidden',
               pointerEvents: showHelp ? 'auto' : 'none',
-              transform: showHelp ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.96)',
+              transform: showHelp
+                ? 'translateY(0) scale(1)'
+                : 'translateY(12px) scale(0.96)'
             }}
             className="absolute bottom-16 right-0 w-56 rounded-2xl bg-[#332F2D] px-4 py-3 text-sm text-white shadow-xl"
           >
-            <p className="font-semibold text-[#F9D7B5]">Butuh bantuan?</p>
-            <p className="mt-1 text-[#F4EDE6]">Klik tombol login untuk mulai belajar atau masuk ke akunmu.</p>
+            <p className="font-semibold text-[#F9D7B5]">
+              Butuh bantuan?
+            </p>
+
+            <p className="mt-1 text-[#F4EDE6]">
+              Klik tombol login untuk mulai belajar atau masuk ke akunmu.
+            </p>
           </div>
+
         </div>
       </div>
 
