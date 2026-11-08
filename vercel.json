@@ -6,7 +6,11 @@
       "root": "backend-vite",
       "framework": "express",
       "buildCommand": "npm run build",
-      "entrypoint": "src/server.ts"
+      "entrypoint": "src/server.ts",
+      "includeFiles": [
+        "node_modules/**",
+        "dist/**"
+      ]
     },
     "frontend-vite": {
       "root": "frontend-vite",
