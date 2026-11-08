@@ -396,3 +396,72 @@ export async function resetStudentStrikes(
     { notes },
   );
 }
+
+
+export interface TeacherStrikeHistory {
+  violations: Array<{
+    id: string;
+    message: string;
+    detected_words: string[];
+    strike_level: number;
+    created_at: string;
+  }>;
+  resets: Array<{
+    id: string;
+    teacher_id: string;
+    teacher_name: string | null;
+    reset_at: string;
+    notes: string | null;
+  }>;
+}
+
+export async function getTeacherStudentChatHistory(studentId: string): Promise<ChatHistoryItem[]> {
+  const response = await apiClient.get<{ data: ChatHistoryItem[] }>(
+    `/api/teacher/students/${encodeURIComponent(studentId)}/chat-history`,
+  );
+  return response.data.data ?? [];
+}
+
+export async function getTeacherStudentStrikeHistory(studentId: string): Promise<TeacherStrikeHistory> {
+  const response = await apiClient.get<{ data: TeacherStrikeHistory }>(
+    `/api/teacher/students/${encodeURIComponent(studentId)}/strike-history`,
+  );
+  return response.data.data;
+}
+
+export async function updateTeacherStrikeResetNotes(
+  studentId: string,
+  resetId: string,
+  notes: string,
+): Promise<void> {
+  await apiClient.patch(
+    `/api/teacher/students/${encodeURIComponent(studentId)}/strike-resets/${encodeURIComponent(resetId)}/notes`,
+    { notes },
+  );
+}
+
+
+export interface TeacherReportData {
+  summary: {
+    totalStudents: number;
+    activeStudents: number;
+    messagesThisWeek: number;
+    violationsThisMonth: number;
+    resetsThisMonth: number;
+    totalXp: number;
+    blockedStudents: number;
+  };
+  weeklyActivity: Array<{ date: string; label: string; messages: number; violations: number }>;
+  gradeDistribution: Array<{ grade: string; count: number }>;
+  strikeDistribution: Array<{ level: number; count: number }>;
+  violationLevels: Array<{ level: number; count: number }>;
+  generatedAt: string;
+}
+
+export async function getTeacherReports(): Promise<TeacherReportData> {
+  const response = await apiClient.get<{ success: boolean; data: TeacherReportData }>('/api/teacher/reports');
+  if (!response.data?.success || !response.data.data) {
+    throw new Error('Respons laporan guru tidak valid.');
+  }
+  return response.data.data;
+}

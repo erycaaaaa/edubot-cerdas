@@ -1,6 +1,3 @@
-
-
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { LogOut, AlertCircle, TrendingUp, Users, BookOpen, Home, BarChart3, Bell, X, Menu, AlertTriangle, ShieldAlert, CheckCheck, RotateCcw, School, Search, ChevronRight, Eye, ArrowLeft } from 'lucide-react';
@@ -11,6 +8,8 @@ import {
   markTeacherNotificationRead,
   markAllTeacherNotificationsRead,
   resetStudentStrikes,
+  getTeacherReports,
+  type TeacherReportData,
 } from '../services/apiClient';
 import {
   getSession,
@@ -20,6 +19,7 @@ import { AnimatedBlobs } from '../components/AnimatedBlobs';
 import { BingoLogo } from '../components/BingoLogo';
 import { AccountMenu } from '../components/AccountMenu';
 import { useDesktopNavigation } from '../hooks/useDesktopNavigation';
+import StudentDetailModal from '../components/StudentDetailModal';
 
 // ─── Strike Dot Component ──────────────────
 function StrikeDot({ index, active, total }: { index: number; active: boolean; total: number }) {
@@ -51,8 +51,9 @@ interface StudentRow {
   avatar: string;
   grade: string;
   warnings: number;
-  sessionsThisWeek: null;
-  topicsLearned: null;
+  sessionsThisWeek: number | null;
+  topicsLearned: number | null;
+  isBlocked?: boolean;
   recentActivity: string;
 }
 
@@ -87,6 +88,9 @@ export default function TeacherDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [reportData, setReportData] = useState<TeacherReportData | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState('');
 
   useEffect(() => {
     if (!session || session.role !== 'teacher') navigate('/login/teacher', { replace: true });
@@ -112,7 +116,8 @@ export default function TeacherDashboard() {
         id: i + 1, studentId: student.id, email: student.email, name: student.name,
         avatar: student.avatar || '🦁', grade: student.grade ? `Kelas ${student.grade}` : 'Kelas -',
         warnings: student.strike_count, sessionsThisWeek: null, topicsLearned: null,
-        recentActivity: 'Statistik aktivitas belajar belum tersedia.',
+        isBlocked: student.is_blocked,
+        recentActivity: 'Buka detail siswa untuk melihat aktivitas percakapan.',
       }));
       setStudents(mapped);
       setSelectedStudent(previous => previous ? mapped.find(student => student.studentId === previous.studentId) ?? null : null);
@@ -133,6 +138,21 @@ export default function TeacherDashboard() {
     }, 10000);
     return () => { mounted.current = false; clearInterval(interval); };
   }, [refreshData]);
+
+  useEffect(() => {
+    if (activeNav !== 'laporan' || !session || session.role !== 'teacher') return;
+    let cancelled = false;
+    setReportLoading(true);
+    setReportError('');
+    getTeacherReports()
+      .then((data) => { if (!cancelled) setReportData(data); })
+      .catch((error) => {
+        console.error('Teacher report load error:', error);
+        if (!cancelled) setReportError(error?.response?.data?.details || error?.response?.data?.error || 'Laporan gagal dimuat. Periksa koneksi backend dan hak akses guru.');
+      })
+      .finally(() => { if (!cancelled) setReportLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeNav, session]);
 
   const handleMarkAllRead = async () => {
     try {
@@ -156,7 +176,7 @@ export default function TeacherDashboard() {
     await refreshData();
   };
 
-  const handleResetStrikes = async (studentIdOrEmail: string) => {
+  const handleResetStrikes = async (studentIdOrEmail: string): Promise<boolean> => {
     const target = students.find((s) => s.email === studentIdOrEmail || s.studentId === studentIdOrEmail);
     const id = target?.studentId || studentIdOrEmail;
     try {
@@ -164,9 +184,10 @@ export default function TeacherDashboard() {
     } catch (err) {
       console.warn('Backend reset strikes error:', err);
       setDataError('Strike belum berhasil direset. Silakan coba lagi.');
-      return;
+      return false;
     }
     await refreshData();
+    return true;
   };
 
   const handleLogout = async () => {
@@ -713,109 +734,81 @@ export default function TeacherDashboard() {
 
             {/* ══════════ LAPORAN VIEW ══════════ */}
             {activeNav === 'laporan' && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <button
-                  onClick={() => setActiveNav('dashboard')}
-                  className="flex items-center gap-2 text-[#5D594C] hover:text-[#332F2D] mb-4 font-semibold transition-colors"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  <span>Kembali ke Dashboard</span>
-                </button>
-                <div className="bg-white rounded-3xl shadow-sm p-12 text-center border border-[#BDB2A0]/30">
-                  <BarChart3 className="w-16 h-16 text-[#BDB2A0] mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-[#332F2D] mb-2">Laporan Pembelajaran</h3>
-                  <p className="text-[#5D594C]">Fitur grafik analitik dan laporan perkembangan siswa sedang disiapkan.</p>
-                  <p className="text-sm text-[#5D594C]/70 mt-1">Laporan aktivitas dan perilaku siswa akan tampil di sini.</p>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <button onClick={() => setActiveNav('dashboard')} className="flex items-center gap-2 text-[#5D594C] hover:text-[#332F2D] mb-2 font-semibold transition-colors">
+                      <ArrowLeft className="w-5 h-5" /><span>Kembali ke Dashboard</span>
+                    </button>
+                    <h2 className="text-2xl font-extrabold text-[#332F2D]">Laporan Pembelajaran</h2>
+                    <p className="text-sm text-[#777064] mt-1">Ringkasan aktivitas dan keamanan belajar siswa di sekolah.</p>
+                  </div>
+                  <button onClick={() => { setReportLoading(true); setReportError(''); getTeacherReports().then(setReportData).catch((error: any) => setReportError(error?.response?.data?.details || error?.response?.data?.error || 'Gagal memperbarui laporan.')).finally(() => setReportLoading(false)); }} className="px-4 py-2.5 rounded-xl bg-[#776938] text-white font-bold text-sm hover:bg-[#66592F] disabled:opacity-60" disabled={reportLoading}>
+                    {reportLoading ? 'Memuat...' : '↻ Perbarui laporan'}
+                  </button>
                 </div>
+
+                {reportError && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><strong>Laporan tidak dapat dimuat.</strong><p className="mt-1">{reportError}</p></div>}
+                {reportLoading && !reportData && <div className="rounded-2xl bg-white border border-[#BDB2A0]/30 p-10 text-center text-[#777064]">Mengambil data laporan dari server...</div>}
+                {!reportLoading && !reportData && !reportError && <div className="rounded-2xl bg-white border border-[#BDB2A0]/30 p-10 text-center text-[#777064]">Belum ada data laporan untuk ditampilkan.</div>}
+
+                {reportData && (
+                  <>
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Total Siswa', value: reportData.summary.totalStudents, hint: 'Siswa terdaftar', icon: Users },
+                        { label: 'Siswa Aktif', value: reportData.summary.activeStudents, hint: 'Mengirim pesan 7 hari terakhir', icon: TrendingUp },
+                        { label: 'Pesan Minggu Ini', value: reportData.summary.messagesThisWeek, hint: 'Pesan dari siswa', icon: BookOpen },
+                        { label: 'Pelanggaran 30 Hari', value: reportData.summary.violationsThisMonth, hint: 'Catatan pelanggaran', icon: ShieldAlert },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return <div key={item.label} className="bg-white rounded-2xl border border-[#BDB2A0]/30 p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-sm text-[#777064]">{item.label}</span><Icon className="w-5 h-5 text-[#A58A55]" /></div><p className="text-2xl font-extrabold text-[#332F2D] mt-2">{item.value.toLocaleString('id-ID')}</p><p className="text-xs text-[#918879] mt-1">{item.hint}</p></div>;
+                      })}
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                      <section className="bg-white rounded-2xl border border-[#BDB2A0]/30 p-5 shadow-sm">
+                        <div className="flex flex-wrap justify-between gap-2 mb-5"><div><h3 className="font-extrabold text-[#332F2D]">Aktivitas 7 Hari Terakhir</h3><p className="text-xs text-[#918879] mt-1">Jumlah pesan siswa per hari</p></div><span className="text-xs text-[#776938] font-semibold">Chat AI</span></div>
+                        <div className="h-52 flex items-end gap-2 sm:gap-4 border-b border-[#E9E2D8] pb-2">
+                          {reportData.weeklyActivity.map((day) => {
+                            const max = Math.max(1, ...reportData.weeklyActivity.map((item) => item.messages));
+                            const height = day.messages === 0 ? 3 : Math.max(8, (day.messages / max) * 100);
+                            return <div key={day.date} className="flex-1 h-full flex flex-col justify-end items-center gap-2 min-w-0"><span className="text-[10px] sm:text-xs font-bold text-[#776938]">{day.messages}</span><div className="w-full max-w-10 rounded-t-lg bg-[#B8956A] hover:bg-[#92764F] transition-colors" style={{ height: `${height}%` }} title={`${day.label}: ${day.messages} pesan`} /><span className="text-[10px] text-[#777064]">{day.label}</span></div>;
+                          })}
+                        </div>
+                      </section>
+
+                      <section className="bg-white rounded-2xl border border-[#BDB2A0]/30 p-5 shadow-sm">
+                        <h3 className="font-extrabold text-[#332F2D]">Distribusi Siswa per Kelas</h3><p className="text-xs text-[#918879] mt-1 mb-5">Berdasarkan kelas pada profil siswa</p>
+                        <div className="space-y-3">{reportData.gradeDistribution.length === 0 ? <p className="text-sm text-[#918879]">Belum ada data kelas.</p> : reportData.gradeDistribution.map((item) => { const max = Math.max(1, ...reportData.gradeDistribution.map((row) => row.count)); return <div key={item.grade} className="grid grid-cols-[85px_1fr_32px] items-center gap-3"><span className="text-xs text-[#5D594C]">{item.grade}</span><div className="h-3 bg-[#F2EEE8] rounded-full overflow-hidden"><div className="h-full rounded-full bg-[#B8956A]" style={{ width: `${(item.count / max) * 100}%` }} /></div><strong className="text-xs text-[#332F2D] text-right">{item.count}</strong></div>; })}</div>
+                      </section>
+
+                      <section className="bg-white rounded-2xl border border-[#BDB2A0]/30 p-5 shadow-sm">
+                        <h3 className="font-extrabold text-[#332F2D]">Status Strike Siswa</h3><p className="text-xs text-[#918879] mt-1 mb-5">Kondisi strike aktif saat ini</p>
+                        <div className="space-y-3">{reportData.strikeDistribution.map((item) => { const labels = ['Aman', 'Ringan', 'Sedang', 'Berat']; const colors = ['#69A86B', '#E5C44F', '#E99A45', '#D96B63']; const total = Math.max(1, reportData.summary.totalStudents); return <div key={item.level} className="grid grid-cols-[75px_1fr_48px] items-center gap-3"><span className="text-xs text-[#5D594C]">{labels[item.level]}</span><div className="h-3 bg-[#F2EEE8] rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${(item.count / total) * 100}%`, backgroundColor: colors[item.level] }} /></div><strong className="text-xs text-[#332F2D] text-right">{item.count}</strong></div>; })}</div>
+                        <div className="mt-5 pt-4 border-t border-[#EEE8DF] grid grid-cols-2 gap-3"><div><p className="text-xs text-[#918879]">Siswa diblokir</p><p className="text-xl font-extrabold text-[#D96B63]">{reportData.summary.blockedStudents}</p></div><div><p className="text-xs text-[#918879]">Reset 30 hari</p><p className="text-xl font-extrabold text-[#776938]">{reportData.summary.resetsThisMonth}</p></div></div>
+                      </section>
+
+                      <section className="bg-white rounded-2xl border border-[#BDB2A0]/30 p-5 shadow-sm">
+                        <h3 className="font-extrabold text-[#332F2D]">Pelanggaran Berdasarkan Level</h3><p className="text-xs text-[#918879] mt-1 mb-5">Rekap catatan 30 hari terakhir</p>
+                        <div className="grid grid-cols-3 gap-3">{reportData.violationLevels.map((item) => <div key={item.level} className="rounded-xl p-4 text-center" style={{ backgroundColor: ['#FFF7D9', '#FFF0DD', '#FDE8E6'][item.level - 1] }}><p className="text-xs font-bold text-[#776938]">Strike {item.level}</p><p className="text-2xl font-extrabold text-[#332F2D] mt-1">{item.count}</p></div>)}</div>
+                        <div className="mt-5 pt-4 border-t border-[#EEE8DF]"><div className="flex justify-between text-sm"><span className="text-[#777064]">Total XP seluruh siswa</span><strong className="text-[#776938]">{reportData.summary.totalXp.toLocaleString('id-ID')} XP</strong></div><p className="text-[11px] text-[#918879] mt-2">Data dihitung dari catatan gamifikasi siswa yang terdaftar di sekolah ini.</p></div>
+                      </section>
+                    </div>
+                    <p className="text-[11px] text-[#918879] text-right">Diperbarui: {new Date(reportData.generatedAt).toLocaleString('id-ID')}</p>
+                  </>
+                )}
               </motion.div>
             )}
 
             {/* Student Detail Modal */}
-            <AnimatePresence>
-              {selectedStudent && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-                  onClick={() => setSelectedStudent(null)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#BDB2A0]/30 shadow-2xl"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="text-center mb-6">
-                      <div className="w-20 h-20 bg-[#FDF6EE] border border-[#BDB2A0]/30 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-sm">{selectedStudent.avatar}</div>
-                      <h3 className="font-bold text-2xl text-[#332F2D] mb-1">{selectedStudent.name}</h3>
-                      <p className="text-[#5D594C] font-semibold">{selectedStudent.grade}</p>
-                      <p className="text-xs text-[#5D594C]/70 mt-1">{selectedStudent.email}</p>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="bg-[#FDF6EE] border border-[#BDB2A0]/30 rounded-2xl p-4">
-                        <p className="text-sm text-[#5D594C] mb-1 font-medium">Sesi Minggu Ini</p>
-                        <p className="text-2xl font-bold text-[#332F2D]">{selectedStudent.sessionsThisWeek ?? 'Belum tersedia'}</p>
-                      </div>
-                      <div className="bg-[#776938]/10 border border-[#776938]/20 rounded-2xl p-4">
-                        <p className="text-sm text-[#5D594C] mb-1 font-medium">Topik Dipelajari</p>
-                        <p className="text-2xl font-bold text-[#776938]">{selectedStudent.topicsLearned ?? 'Belum tersedia'}</p>
-                      </div>
-
-                      {/* Strike Status Card */}
-                      {(() => {
-                        const badge = getWarningBadge(selectedStudent.warnings);
-                        return (
-                          <div className="rounded-2xl p-4 border" style={{ backgroundColor: badge.bg, borderColor: badge.color }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div>
-                                <p className="text-sm text-[#5D594C] mb-1 font-medium">Status Strike</p>
-                                <span className="inline-block px-3 py-0.5 rounded-full text-xs font-bold text-white shadow-sm" style={{ backgroundColor: badge.color }}>
-                                  {selectedStudent.warnings}/3 — {badge.label}
-                                </span>
-                              </div>
-                              <div className="flex gap-2">
-                                {[1, 2, 3].map((s) => (
-                                  <StrikeDot key={s} index={s} active={s <= selectedStudent.warnings} total={selectedStudent.warnings} />
-                                ))}
-                              </div>
-                            </div>
-                            {selectedStudent.warnings >= 3 && (
-                              <div className="flex items-center gap-2 mt-2 p-2 bg-white rounded-xl border border-[#FF4444]/30">
-                                <AlertTriangle className="w-4 h-4 text-[#FF4444]" />
-                                <p className="text-xs text-[#332F2D] font-medium">Chat siswa telah dinonaktifkan.</p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      <p className="text-sm text-[#5D594C]">Tinjau notifikasi sekolah untuk detail pelanggaran yang tercatat di server.</p>
-
-                      <div className="bg-[#FDF6EE] border border-[#BDB2A0]/25 rounded-2xl p-4">
-                        <p className="text-sm text-[#5D594C] mb-1 font-medium">Aktivitas Terakhir</p>
-                        <p className="text-[#332F2D] font-semibold">{selectedStudent.recentActivity}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3 mt-6">
-                      {selectedStudent.warnings > 0 && (
-                        <button
-                          onClick={() => { handleResetStrikes(selectedStudent.email); setSelectedStudent(null); }}
-                          className="flex-1 py-3.5 bg-[#776938] hover:bg-[#66592F] text-white font-bold rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
-                        >
-                          <RotateCcw className="w-4 h-4" />Reset Strike
-                        </button>
-                      )}
-                      <button onClick={() => setSelectedStudent(null)} className="flex-1 py-3.5 bg-[#B9895F] hover:bg-[#A67950] text-white font-bold rounded-2xl shadow-sm hover:shadow-md transition-all">
-                        Tutup
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {selectedStudent && (
+              <StudentDetailModal
+                student={selectedStudent}
+                onClose={() => setSelectedStudent(null)}
+                onReset={handleResetStrikes}
+              />
+            )}
           </div>
         </div>
       </div>

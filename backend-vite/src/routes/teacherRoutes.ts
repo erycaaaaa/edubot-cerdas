@@ -9,12 +9,18 @@ import {
   handleResetStudentStrikes,
   getStudentChatHistory,
   getStudentGamification,
+  getStudentStrikeHistory,
+  updateStrikeResetNotes,
+  getTeacherReports,
 } from '../controllers/teacherController';
 
 const router = Router();
 
 // All teacher routes require authentication and teacher role
 router.use(requireAuth, requireRole('teacher'));
+
+// GET /api/teacher/reports
+router.get('/reports', getTeacherReports);
 
 // GET /api/teacher/classes
 router.get('/classes', getClasses);
@@ -24,6 +30,12 @@ router.get('/students', getStudents);
 
 // GET /api/teacher/students/:studentId/chat-history
 router.get('/students/:studentId/chat-history', getStudentChatHistory);
+
+// GET /api/teacher/students/:studentId/strike-history
+router.get('/students/:studentId/strike-history', getStudentStrikeHistory);
+
+// PATCH /api/teacher/students/:studentId/strike-resets/:resetId/notes
+router.patch('/students/:studentId/strike-resets/:resetId/notes', updateStrikeResetNotes);
 
 // GET /api/teacher/students/:studentId/gamification
 router.get('/students/:studentId/gamification', getStudentGamification);
