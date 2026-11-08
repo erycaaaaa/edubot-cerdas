@@ -343,7 +343,9 @@ process.on('uncaughtException', (error: Error) => {
 // 13. LOCAL SERVER START
 // ============================================================
 
-if (require.main === module && !isServerless) {
+// Only start an HTTP listener during local development.
+// Vercel invokes the exported Express app directly.
+if (!isServerless && require.main === module) {
   app.listen(PORT, () => {
     console.log('[SERVER] EduBot REST API started');
     console.log('[SERVER] URL:', `http://localhost:${PORT}`);
@@ -356,12 +358,7 @@ if (require.main === module && !isServerless) {
 }
 
 // ============================================================
-// 14. EXPORT EXPRESS APP FOR VERCEL
+// 14. EXPORT EXPRESS APP
 // ============================================================
 
 export default app;
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = app;
-  module.exports.default = app;
-}
