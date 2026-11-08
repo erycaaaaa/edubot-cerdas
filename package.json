@@ -1,0 +1,11 @@
+
+{
+  "name": "edubot-cerdas",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:local --prefix backend-vite && npm run build --prefix frontend-vite",
+    "build:backend": "npm run build:local --prefix backend-vite",
+    "build:frontend": "npm run build --prefix frontend-vite"
+  }
+}

@@ -4,20 +4,20 @@
   "version": "2.0.0",
   "type": "commonjs",
   "main": "server.js",
-  "scripts": {
-    "dev": "nodemon --exec ts-node src/server.ts",
-    "build": "tsc && esbuild src/server.ts --bundle --platform=node --format=cjs --target=node22 --outfile=dist/server.bundle.cjs",
-    "test": "node -r ts-node/register --test",
-    "start": "node server.js",
-    "diagnostics": "ts-node scripts/edubuz-diagnostics.ts"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "axios": "^1.20.0",
-    "cors": "^2.8.6",
-    "dotenv": "^16.3.1",
-    "express": "^4.22.3"
-  },
+
+"scripts": {
+  "dev": "nodemon --exec ts-node src/server.ts",
+  "build:local": "tsc && esbuild src/server.ts --bundle --platform=node --format=cjs --target=node22 --outfile=server.js",
+  "start": "node server.js",
+  "diagnostics": "ts-node scripts/edubuz-diagnostics.ts"
+},
+"dependencies": {
+  "@supabase/supabase-js": "^2.39.0",
+  "axios": "^1.20.0",
+  "cors": "^2.8.6",
+  "dotenv": "^16.3.1",
+  "express": "^4.22.3"
+},
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
