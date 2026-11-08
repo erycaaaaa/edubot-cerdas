@@ -23,15 +23,6 @@ const roles = [
     emoji: '👩‍🏫'
   },
   {
-    id: 'headmaster',
-    title: 'Kepala Sekolah',
-    description: 'Saya ingin memantau seluruh sekolah',
-    Icon: Users,
-    color: 'bg-[#3B4C5F]',
-    textColor: 'text-[#3B4C5F]',
-    emoji: '🏫'
-  },
-  {
     id: 'parent',
     title: 'Orang Tua',
     description: 'Saya ingin memantau anak',
