@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, AlertCircle, TrendingUp, Users, BookOpen, Home, BarChart3, Bell, X, Menu, AlertTriangle, ShieldAlert, CheckCheck, RotateCcw, School, Search, ChevronRight, Eye, ArrowLeft } from 'lucide-react';
+import { LogOut, AlertCircle, TrendingUp, Users, BookOpen, Home, BarChart3, Bell, X, Menu, ShieldAlert, CheckCheck, RotateCcw, School, Search, ChevronRight, Eye, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   getTeacherStudents,
